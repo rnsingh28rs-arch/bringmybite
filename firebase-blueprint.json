@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "DAdminConfig": {
+      "title": "DAdminConfig",
+      "description": "Central CMS and design configuration for website, Android and iOS applications",
+      "type": "object",
+      "properties": {
+        "version": { "type": "string" },
+        "lastModified": { "type": "string" },
+        "brand": { "type": "object" },
+        "banners": { "type": "array" },
+        "pricing": { "type": "object" },
+        "menus": { "type": "object" },
+        "customFields": { "type": "array" },
+        "bankPayment": { "type": "object" },
+        "contactInfo": { "type": "object" },
+        "offers": { "type": "array" },
+        "adminUsers": { "type": "array" },
+        "visibility": { "type": "object" },
+        "customPanels": { "type": "array" },
+        "siteContent": { "type": "object" }
+      }
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Customer subscription package and delivery details",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string" },
+        "mobileNumber": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "category": { "type": "string" },
+        "packageType": { "type": "string" },
+        "monthlyPrice": { "type": "number" },
+        "mealPreference": { "type": "string" },
+        "startDate": { "type": "string" },
+        "duration": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "active": { "type": "boolean" },
+        "verificationStatus": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "amountPaid": { "type": "number" },
+        "transactionId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["customerName", "mobileNumber", "packageType", "mealPreference", "startDate", "duration"]
+    },
+    "InstantOrder": {
+      "title": "InstantOrder",
+      "description": "Instant single thali order",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string" },
+        "mobileNumber": { "type": "string" },
+        "thaliType": { "type": "string" },
+        "quantity": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "deliveryAddress": { "type": "string" },
+        "deliverySlot": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["customerName", "mobileNumber", "thaliType", "quantity", "totalAmount"]
+    },
+    "Receipt": {
+      "title": "Receipt",
+      "description": "Official customer and merchant meal subscription and order tax invoice receipt",
+      "type": "object",
+      "properties": {
+        "receiptNumber": { "type": "string" },
+        "receiptDate": { "type": "string" },
+        "referenceId": { "type": "string" },
+        "type": { "type": "string" },
+        "customerName": { "type": "string" },
+        "mobileNumber": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "category": { "type": "string" },
+        "planOrItem": { "type": "string" },
+        "mealPreference": { "type": "string" },
+        "deliveryLocation": { "type": "string" },
+        "startDate": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "amountPaid": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "transactionRef": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["receiptNumber", "customerName", "mobileNumber", "amountPaid", "receiptDate"]
+    }
+  },
+  "firestore": {
+    "/configs/dadmin": {
+      "schema": "DAdminConfig",
+      "description": "Central CMS configuration document synced across Web, Android, and iOS in real time"
+    },
+    "/subscriptions/{subscriptionId}": {
+      "schema": "Subscription",
+      "description": "Customer meal subscriptions"
+    },
+    "/instant_orders/{orderId}": {
+      "schema": "InstantOrder",
+      "description": "Instant thali orders"
+    },
+    "/receipts/{receiptId}": {
+      "schema": "Receipt",
+      "description": "Official customer and merchant receipts"
+    }
+  }
+}
