@@ -1,134 +1,108 @@
-import React, { useEffect } from 'react';
-import { AppProvider, useApp } from './context/AppContext';
+import React, { useState, useEffect } from 'react';
 import { TopBar } from './components/common/TopBar';
-import { Header } from './components/common/Header';
 import { TodayMenuTicker } from './components/common/TodayMenuTicker';
-import { Footer } from './components/common/Footer';
-import { ChatBox } from './components/common/ChatBox';
 import { HeroBanner } from './components/customer/HeroBanner';
 import { PackagesSection } from './components/customer/PackagesSection';
 import { LowerFeaturesGrid } from './components/customer/LowerFeaturesGrid';
-import { WeeklyMenuModal } from './components/customer/WeeklyMenuModal';
-import { RegistrationModal } from './components/customer/RegistrationModal';
+import { Footer } from './components/common/Footer';
+import { ChatBox } from './components/common/ChatBox';
+import { LiveActiveOrderBar } from './components/customer/LiveActiveOrderBar';
+
+// Customer Modals
 import { InstantOrderModal } from './components/customer/InstantOrderModal';
-import { ReferralModal } from './components/customer/ReferralModal';
-import { BonusOffersModal } from './components/customer/BonusOffersModal';
+import { RegistrationModal } from './components/customer/RegistrationModal';
+import { TrackOrderModal } from './components/customer/TrackOrderModal';
 import { RenewalModal } from './components/customer/RenewalModal';
-import { ReminderPreviewModal } from './components/customer/ReminderPreviewModal';
-import { ExpiryReminderBanner } from './components/customer/ExpiryReminderBanner';
-import { NativeAppDownloadModal } from './components/mobile/NativeAppDownloadModal';
-import { StaffLoginModal } from './components/common/StaffLoginModal';
-import { StaffNavBar } from './components/panels/StaffNavBar';
+
+// Staff Panels
+import { SuperAdminPanel } from './components/panels/SuperAdminPanel';
 import { AdminPanel } from './components/panels/AdminPanel';
 import { ManagerPanel } from './components/panels/ManagerPanel';
 import { ChefPanel } from './components/panels/ChefPanel';
-import { MobileAppFrame } from './components/mobile/MobileAppFrame';
-import { DAdminDesigner } from './components/panels/DAdminDesigner';
-import { CmsProvider } from './cms/CmsContext';
+import { StaffNavBar } from './components/panels/StaffNavBar';
 
-const MainContent: React.FC = () => {
-  const { activeRole, setActiveRole, openStaffLogin, authenticatedRoles } = useApp();
+export const App: React.FC = () => {
+  const [currentHash, setCurrentHash] = useState<string>(window.location.hash);
 
-  // Support direct route checking e.g. /admin in URL
   useEffect(() => {
-    const path = window.location.pathname.toLowerCase();
-    const hash = window.location.hash.toLowerCase();
-    const search = window.location.search.toLowerCase();
-    
-    if (path.includes('/admin') || hash.includes('admin') || search.includes('role=admin')) {
-      if (authenticatedRoles.admin) {
-        setActiveRole('admin');
-      } else {
-        openStaffLogin('admin');
-      }
-    } else if (path.includes('/manager') || hash.includes('manager') || search.includes('role=manager')) {
-      if (authenticatedRoles.manager) {
-        setActiveRole('manager');
-      } else {
-        openStaffLogin('manager');
-      }
-    } else if (path.includes('/chef') || hash.includes('chef') || search.includes('role=chef')) {
-      if (authenticatedRoles.chef) {
-        setActiveRole('chef');
-      } else {
-        openStaffLogin('chef');
-      }
-    }
-  }, [setActiveRole, openStaffLogin, authenticatedRoles]);
+    const handleHashChange = () => {
+      setCurrentHash(window.location.hash);
+    };
 
-  if (window.location.pathname.toLowerCase().startsWith('/d-admin')) {
-    return <DAdminDesigner />;
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleExitToHome = () => {
+    window.location.hash = '';
+    setCurrentHash('');
+  };
+
+  // Staff Panel Routing
+  if (currentHash === '#superadmin' || currentHash === '#dadmin') {
+    return (
+      <div className="min-h-screen bg-[#0E1712] text-[#FAF7F2]">
+        <StaffNavBar activeRole="superadmin" onExit={handleExitToHome} />
+        <SuperAdminPanel onClose={handleExitToHome} />
+      </div>
+    );
   }
 
-  return (
-    <MobileAppFrame>
-      <div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans">
-        
-        {/* Top Info Bar */}
-        <TopBar />
-
-        {/* Global Navigation Header (Public Customer Header) */}
-        <Header />
-
-        {/* Running Strip showing Today's Menu */}
-        <TodayMenuTicker />
-
-        {/* Staff Workspace Top Navigation (Only shown when Admin/Manager/Chef is active) */}
-        {activeRole !== 'customer' && <StaffNavBar />}
-
-        {/* Main Workspace Body based on Active Role */}
-        <main className="flex-1">
-          {activeRole === 'customer' && (
-            <>
-              {/* Expiry Reminder Notification Banner */}
-              <ExpiryReminderBanner />
-
-              {/* 4 Feature Banners + Thali Card */}
-              <HeroBanner />
-
-              {/* 3 Monthly Subscription Packages (Veg, Egg, Non-Veg) */}
-              <PackagesSection />
-
-              {/* Delivery Model (College/Office Gate) + Why Us + Today's Menu */}
-              <LowerFeaturesGrid />
-            </>
-          )}
-
-          {activeRole === 'admin' && <AdminPanel />}
-
-          {activeRole === 'manager' && <ManagerPanel />}
-
-          {activeRole === 'chef' && <ChefPanel />}
-        </main>
-
-        {/* Global Footer */}
-        <Footer />
-
-        {/* Floating Support & Quick Order Chat Box */}
-        <ChatBox />
-
-        {/* Interactive Modals */}
-        <WeeklyMenuModal />
-        <RegistrationModal />
-        <InstantOrderModal />
-        <ReferralModal />
-        <BonusOffersModal />
-        <RenewalModal />
-        <ReminderPreviewModal />
-        <NativeAppDownloadModal />
-        <StaffLoginModal />
-
+  if (currentHash === '#admin') {
+    return (
+      <div className="min-h-screen bg-[#0E1712] text-[#FAF7F2]">
+        <StaffNavBar activeRole="admin" onExit={handleExitToHome} />
+        <AdminPanel onClose={handleExitToHome} />
       </div>
-    </MobileAppFrame>
+    );
+  }
+
+  if (currentHash === '#manager') {
+    return (
+      <div className="min-h-screen bg-[#0E1712] text-[#FAF7F2]">
+        <StaffNavBar activeRole="manager" onExit={handleExitToHome} />
+        <ManagerPanel onClose={handleExitToHome} />
+      </div>
+    );
+  }
+
+  if (currentHash === '#chef') {
+    return (
+      <div className="min-h-screen bg-[#0E1712] text-[#FAF7F2]">
+        <StaffNavBar activeRole="chef" onExit={handleExitToHome} />
+        <ChefPanel onClose={handleExitToHome} />
+      </div>
+    );
+  }
+
+  // Default Customer Website View
+  return (
+    <div className="min-h-screen bg-[#FAF7F2] text-[#1A2E22] flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+      {/* Top Announcement Bar */}
+      <TopBar />
+
+      {/* Live Menu Ticker */}
+      <TodayMenuTicker />
+
+      {/* Main Page Sections */}
+      <main className="flex-1 w-full space-y-4">
+        <HeroBanner />
+        <PackagesSection />
+        <LowerFeaturesGrid />
+      </main>
+
+      {/* Footer */}
+      <Footer />
+
+      {/* Floating Helpers & Widgets */}
+      <LiveActiveOrderBar />
+      <ChatBox />
+
+      {/* Modals Container */}
+      <InstantOrderModal />
+      <RegistrationModal />
+      <TrackOrderModal />
+      <RenewalModal />
+    </div>
   );
 };
-
-export default function App() {
-  return (
-    <CmsProvider>
-      <AppProvider>
-        <MainContent />
-      </AppProvider>
-    </CmsProvider>
-  );
-}
