@@ -1,15 +1,15 @@
 import React from 'react';
-import { useAppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { FOOD_IMAGES } from '../../assets/foodImages';
 
 export const HeroBanner: React.FC = () => {
-  const { openRegistration, openInstantOrder } = useAppContext();
+  const { openRegistrationModal, openInstantOrderModal } = useApp();
 
   return (
     <section className="relative pt-6 pb-12 px-4 sm:px-6 max-w-7xl mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
         
-        {/* LEFT COLUMN: BRAND PROMISE & PACKAGES */}
+        {/* Left Column: Brand Promise & Package Action */}
         <div className="lg:col-span-7 flex flex-col justify-between space-y-6">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 text-xs font-black tracking-wide uppercase shadow-sm">
@@ -23,11 +23,11 @@ export const HeroBanner: React.FC = () => {
             </h1>
 
             <p className="text-slate-600 text-base sm:text-lg font-medium leading-relaxed max-w-xl">
-              Fresh, hygienic, pure homestyle thalis cooked twice daily for Students & Working Professionals in Greater Noida. Zero maida, zero soda, pure ghar ka swad.
+              Fresh, hygienic, pure homestyle thalis cooked twice daily for Students & Working Professionals in Greater Noida[cite: 1]. Zero maida, zero soda, pure ghar ka swad.
             </p>
           </div>
 
-          {/* Core Monthly Packages Card Box */}
+          {/* Monthly Packages Box */}
           <div className="bg-[#132018] text-[#FAF7F2] rounded-3xl p-6 border border-emerald-500/30 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-[#22382B] pb-3">
               <div>
@@ -43,7 +43,7 @@ export const HeroBanner: React.FC = () => {
               <div className="bg-[#1A2C21] p-3.5 rounded-2xl border border-[#2B4736] space-y-1">
                 <span className="text-xs text-emerald-300 font-bold">🌱 Veg Classic</span>
                 <div className="text-xl font-black text-white font-mono">₹3,700<span className="text-xs font-normal text-slate-400">/mo</span></div>
-                <p className="text-[10px] text-slate-400">4 Rotis, Dal, Sabzi, Rice & Salad</p>
+                <p className="text-[10px] text-slate-400">4 Rotis, Dal, Sabzi, Rice & Salad[cite: 1]</p>
               </div>
 
               <div className="bg-[#1A2C21] p-3.5 rounded-2xl border border-amber-500/40 space-y-1 relative">
@@ -65,14 +65,14 @@ export const HeroBanner: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => openRegistration('Veg Classic Plan')}
+                onClick={() => openRegistrationModal('Veg Classic Plan')}
                 className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black rounded-2xl shadow-lg transition text-sm cursor-pointer"
               >
                 📅 Subscribe Monthly Plan
               </button>
               <button
                 type="button"
-                onClick={() => openInstantOrder('🌱 Pure Veg Standard Thali')}
+                onClick={() => openInstantOrderModal('🌱 Pure Veg Standard Thali')}
                 className="py-3.5 px-6 bg-[#1A2C21] hover:bg-[#253d2e] border border-amber-500/40 text-amber-300 font-black rounded-2xl transition text-sm cursor-pointer"
               >
                 ⚡ Order 1-Time Thali (₹90)
@@ -81,7 +81,7 @@ export const HeroBanner: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: 5CP STAINLESS TRAY PREVIEW BOX */}
+        {/* Right Column: 5CP Stainless Tray Photo Box */}
         <div className="lg:col-span-5 bg-[#132018] rounded-3xl p-5 border border-emerald-500/40 shadow-2xl flex flex-col justify-between space-y-4">
           <div className="flex items-center justify-between border-b border-[#22382B] pb-2.5">
             <div className="flex items-center gap-2">
@@ -93,11 +93,11 @@ export const HeroBanner: React.FC = () => {
             </span>
           </div>
 
-          {/* Photo Frame */}
+          {/* Bound Image Frame */}
           <div className="relative rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 aspect-[4/3] group shadow-inner">
             <img
               src={FOOD_IMAGES.instantTiffin}
-              alt="5CP Tray Homestyle Meal Preview"
+              alt="5CP Tray Homestyle Meal"
               className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
@@ -117,7 +117,7 @@ export const HeroBanner: React.FC = () => {
             </div>
             <div className="bg-[#1A2C21] p-2 rounded-xl border border-[#2B4736]">
               <span className="text-[10px] text-slate-400 block font-bold">DRY SABZI</span>
-              <span className="text-amber-300 font-black text-[11px]">Aloo Gobhi / Bhindi</span>
+              <span className="text-amber-300 font-black text-[11px]">Aloo Gobhi / Bhindi[cite: 1]</span>
             </div>
             <div className="bg-[#1A2C21] p-2 rounded-xl border border-[#2B4736]">
               <span className="text-[10px] text-slate-400 block font-bold">MAIN DISH</span>
@@ -133,7 +133,7 @@ export const HeroBanner: React.FC = () => {
             </div>
           </div>
 
-          {/* Roti Banner & Quick Order Trigger */}
+          {/* Roti & CTA */}
           <div className="bg-[#1A2C21] p-3 rounded-2xl border border-amber-500/30 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <span className="text-lg">🫓</span>
@@ -144,7 +144,7 @@ export const HeroBanner: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => openInstantOrder('🌱 Pure Veg Standard Thali')}
+              onClick={() => openInstantOrderModal('🌱 Pure Veg Standard Thali')}
               className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow cursor-pointer"
             >
               Order (₹90)
