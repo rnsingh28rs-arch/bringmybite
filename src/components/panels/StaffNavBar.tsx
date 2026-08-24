@@ -1,104 +1,110 @@
-import React from 'react';
-import { useApp } from '../../context/AppContext';
-import { STAFF_CREDENTIALS } from '../../data/staffConfig';
-import {
-  ShieldAlert,
-  Briefcase,
-  ChefHat,
-  LogOut,
-  Sparkles,
-  ExternalLink,
-  ChevronRight,
-  UserCheck
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 
-export const StaffNavBar: React.FC = () => {
-  const { activeRole, setActiveRole, openStaffLogin } = useApp();
+interface StaffNavBarProps {
+  activeRole: 'superadmin' | 'admin' | 'manager' | 'chef';
+  onExit?: () => void;
+}
 
-  if (activeRole === 'customer') return null;
+export const StaffNavBar: React.FC<StaffNavBarProps> = ({ activeRole, onExit }) => {
+  const [currentHash, setCurrentHash] = useState(window.location.hash);
 
-  const currentConfig = STAFF_CREDENTIALS[activeRole as 'admin' | 'manager' | 'chef'] || STAFF_CREDENTIALS.admin;
+  useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentHash(window.location.hash);
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleNav = (hash: string) => {
+    window.location.hash = hash;
+  };
+
+  const handleExitToSite = () => {
+    if (onExit) {
+      onExit();
+    } else {
+      window.location.hash = '';
+    }
+  };
 
   return (
-    <div className="bg-[#05180F] text-white border-b-2 border-amber-400 py-2.5 px-4 sticky top-0 z-40 shadow-lg">
+    <header className="bg-[#15231B] border-b border-[#243B2D] sticky top-0 z-50 px-4 py-3 shadow-xl font-sans">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
         
-        {/* Left: Role Info */}
+        {/* Brand & Mode */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-400 text-black flex items-center justify-center font-bold text-xs shadow-xs">
-            {activeRole === 'admin' && <ShieldAlert className="w-5 h-5 text-red-900" />}
-            {activeRole === 'manager' && <Briefcase className="w-5 h-5 text-blue-900" />}
-            {activeRole === 'chef' && <ChefHat className="w-5 h-5 text-amber-900" />}
+          <div className="w-9 h-9 bg-gradient-to-tr from-amber-500 to-amber-600 text-slate-950 font-black rounded-xl flex items-center justify-center text-lg shadow">
+            🍱
           </div>
-
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
-                Staff Control Zone
-              </span>
-              <span className="bg-emerald-800 text-emerald-100 text-[10px] px-2 py-0.2 rounded-full font-mono flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                Active Session
-              </span>
-            </div>
-            <div className="text-xs font-bold text-white flex items-center gap-1">
-              <span>{currentConfig.title}</span>
-              <span className="text-gray-400 text-[11px]">({currentConfig.name})</span>
-            </div>
+            <h1 className="text-sm font-black text-white tracking-wide">Bring My Bite Staff Suite</h1>
+            <p className="text-[10px] text-emerald-400 font-bold">Kitchen & Administrative Operations</p>
           </div>
         </div>
 
-        {/* Middle: Fast Switch between Staff Panels */}
-        <div className="flex items-center bg-black/50 p-1 rounded-xl border border-emerald-900/80 gap-1 text-xs">
+        {/* Panel Switcher Tabs */}
+        <div className="flex items-center gap-1.5 bg-[#0F1A13] p-1 rounded-2xl border border-[#243B2D] overflow-x-auto">
           <button
-            onClick={() => setActiveRole('admin')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+            type="button"
+            onClick={() => handleNav('#superadmin')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              activeRole === 'superadmin'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-[#1A2C21]'
+            }`}
+          >
+            <span>👑</span> D-Admin
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNav('#admin')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
               activeRole === 'admin'
-                ? 'bg-red-700 text-white shadow-xs'
-                : 'text-gray-300 hover:text-white'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-[#1A2C21]'
             }`}
           >
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>Admin</span>
+            <span>💼</span> Admin Orders
           </button>
 
           <button
-            onClick={() => setActiveRole('manager')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+            type="button"
+            onClick={() => handleNav('#manager')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
               activeRole === 'manager'
-                ? 'bg-blue-700 text-white shadow-xs'
-                : 'text-gray-300 hover:text-white'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-[#1A2C21]'
             }`}
           >
-            <Briefcase className="w-3.5 h-3.5" />
-            <span>Manager</span>
+            <span>📋</span> Manager
           </button>
 
           <button
-            onClick={() => setActiveRole('chef')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+            type="button"
+            onClick={() => handleNav('#chef')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
               activeRole === 'chef'
-                ? 'bg-amber-700 text-white shadow-xs'
-                : 'text-gray-300 hover:text-white'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-[#1A2C21]'
             }`}
           >
-            <ChefHat className="w-3.5 h-3.5" />
-            <span>Chef</span>
+            <span>🍳</span> Kitchen Chef
           </button>
         </div>
 
-        {/* Right: Exit to Customer Site button */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveRole('customer')}
-            className="flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-black px-4 py-1.5 rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Exit to Customer Website</span>
-          </button>
-        </div>
+        {/* Exit Button */}
+        <button
+          type="button"
+          onClick={handleExitToSite}
+          className="px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow transition cursor-pointer flex items-center gap-1"
+        >
+          <span>Exit to Website</span>
+          <span>↗</span>
+        </button>
 
       </div>
-    </div>
+    </header>
   );
 };
