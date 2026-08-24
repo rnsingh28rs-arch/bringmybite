@@ -1,522 +1,356 @@
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
-import { FOOD_IMAGES } from '../../assets/foodImages';
-import { PaymentDetailsCard } from '../common/PaymentDetailsCard';
-import confetti from 'canvas-confetti';
-import {
-  X,
-  Zap,
-  Utensils,
-  Plus,
-  Minus,
-  MapPin,
-  Clock,
-  CheckCircle,
-  Phone,
-  MessageSquare,
-  ShieldCheck,
-  Check,
-  QrCode,
-  Building2,
-  Lock
-} from 'lucide-react';
-import { PaymentMethod } from '../../types';
+import { useAppContext } from '../../context/AppContext';
+import { getSiteConfig, formatIndianWhatsAppNumber } from '../../utils/siteConfigStore';
+import { addStoredOrder } from '../../utils/orderStore';
 
 export const InstantOrderModal: React.FC = () => {
-  const {
-    isInstantOrderOpen,
-    setIsInstantOrderOpen,
-    preselectedThaliType,
-    pricing,
-    addInstantOrder
-  } = useApp();
+  const { isInstantOrderOpen, closeInstantOrder, selectedMealPlan } = useAppContext();
+  const config = getSiteConfig();
 
-  const [thaliType, setThaliType] = useState<'veg' | 'egg' | 'non-veg'>(preselectedThaliType);
-  const [quantity, setQuantity] = useState(1);
+  const [mealType, setMealType] = useState<'veg' | 'egg' | 'chicken'>('veg');
+  const [slot, setSlot] = useState<'Lunch (12:30-2:00 PM)' | 'Dinner (7:30-9:30 PM)'>('Lunch (12:30-2:00 PM)');
   const [customerName, setCustomerName] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [deliveryPointType, setDeliveryPointType] = useState<'college' | 'office' | 'home'>('college');
-  const [locationDetail, setLocationDetail] = useState('');
-  const [slot, setSlot] = useState<'Lunch' | 'Dinner'>('Lunch');
-  const [specialInstructions, setSpecialInstructions] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
-  const [transactionId, setTransactionId] = useState('');
-
-  // Placed Order Success state
-  const [placedOrder, setPlacedOrder] = useState<any | null>(null);
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('Knowledge Park III, Greater Noida');
+  const [utrNumber, setUtrNumber] = useState('');
+  const [paymentSlip, setPaymentSlip] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState<{ id: string; amount: number } | null>(null);
 
   if (!isInstantOrderOpen) return null;
 
-  const unitPrice =
-    thaliType === 'veg'
-      ? pricing.vegThaliInstant
-      : thaliType === 'egg'
-      ? pricing.eggThaliInstant
-      : pricing.nonVegThaliInstant;
+  const thaliPrices = {
+    veg: 90,
+    egg: 100,
+    chicken: 120,
+  };
 
-  const totalAmount = unitPrice * quantity;
-  const thaliDisplayName =
-    thaliType === 'veg'
-      ? 'Veg Classic Thali'
-      : thaliType === 'egg'
-      ? 'Egg Delight Thali'
-      : 'Chicken Non-Veg Thali (3 pcs)';
+  const currentPrice = thaliPrices[mealType];
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        setPaymentSlip(compressedBase64);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName.trim() || !mobileNumber.trim() || !locationDetail.trim()) {
-      alert('Please fill in your name, contact number, and delivery gate location.');
+    if (!customerName.trim() || !phone.trim() || !address.trim()) {
+      alert('Please fill customer name, phone number, and delivery gate address.');
       return;
     }
 
-    const order = addInstantOrder({
-      customerName,
-      customerPhone: mobileNumber,
-      thaliType,
-      thaliName: thaliDisplayName,
-      quantity,
-      unitPrice,
-      totalPrice: totalAmount,
-      mealSlot: slot,
-      deliveryCategory: deliveryPointType === 'college' ? 'College Student' : deliveryPointType === 'office' ? 'Working Professional' : 'Other',
-      deliveryLocation:
-        deliveryPointType === 'college'
-          ? `College Gate: ${locationDetail}`
-          : deliveryPointType === 'office'
-          ? `Office Gate/Reception: ${locationDetail}`
-          : `Home Address: ${locationDetail}`,
-      specificInstructions: specialInstructions || undefined,
-      paymentMethod,
-      paymentStatus: 'Prepaid Verified'
-    });
-
-    try {
-      confetti({
-        particleCount: 50,
-        spread: 60,
-        origin: { y: 0.7 }
-      });
-    } catch (err) {
-      // safe fallback
+    if (!utrNumber.trim()) {
+      alert('Please enter 12-digit UPI / UTR Transaction ID after scanning QR.');
+      return;
     }
 
-    setPlacedOrder(order);
+    setIsSubmitting(true);
+
+    const newOrderId = `BMB-${Math.floor(100000 + Math.random() * 900000)}`;
+    const mealLabel =
+      mealType === 'veg'
+        ? '🌱 Pure Veg Standard Thali'
+        : mealType === 'egg'
+        ? '🍳 Egg Delight Thali'
+        : '🍗 Desi Chicken Curry Thali';
+
+    addStoredOrder({
+      id: newOrderId,
+      customerName: customerName.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
+      city: city,
+      planType: 'One-Time Instant Thali',
+      mealPlan: mealLabel,
+      slot: slot,
+      amount: currentPrice,
+      utrNumber: utrNumber.trim(),
+      paymentSlip: paymentSlip || undefined,
+      status: 'pending',
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', Today',
+      estimatedTime: '35 - 45 Mins',
+    });
+
+    setIsSubmitting(false);
+    setOrderPlaced({ id: newOrderId, amount: currentPrice });
   };
 
+  const handleClose = () => {
+    setOrderPlaced(null);
+    setPaymentSlip('');
+    setUtrNumber('');
+    closeInstantOrder();
+  };
+
+  const waChefNumber = formatIndianWhatsAppNumber(config.whatsappNumber || '9315075165');
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-[#FAF7F2] rounded-3xl w-full max-w-2xl shadow-2xl border-2 border-[#C88A24] overflow-hidden flex flex-col max-h-[92vh]">
-        
-        {/* Modal Header */}
-        <div className="bg-[#0D3823] text-white p-4 sm:p-5 flex items-center justify-between border-b border-emerald-900 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#C88A24] text-black flex items-center justify-center font-bold shadow-xs">
-              <Zap className="w-5 h-5 fill-black" />
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto font-sans">
+      <div className="relative max-w-xl w-full bg-[#132018] border border-emerald-500/40 rounded-3xl p-6 sm:p-8 text-[#FAF7F2] shadow-2xl my-8">
+        <button
+          type="button"
+          onClick={handleClose}
+          className="absolute top-5 right-5 w-9 h-9 bg-[#1A2C21] hover:bg-rose-900/40 text-slate-300 hover:text-white rounded-full flex items-center justify-center font-bold text-sm transition cursor-pointer"
+        >
+          ✕
+        </button>
+
+        {orderPlaced ? (
+          <div className="text-center space-y-5 py-4">
+            <div className="w-16 h-16 bg-amber-500/20 border border-amber-500/40 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-lg animate-pulse">
+              🟡
             </div>
-            <div>
-              <h2 className="text-lg font-bold font-serif-title tracking-wide text-[#F2C94C]">
-                Instant Single Thali Order (Prepaid)
-              </h2>
-              <p className="text-xs text-emerald-200">
-                Fresh & Steaming Hot 5CP Thali • Gate Delivery in 45 Mins • 100% Prepaid
-              </p>
+
+            <div className="space-y-1">
+              <span className="text-xs uppercase tracking-widest text-amber-300 font-black">Order Queue Submitted</span>
+              <h3 className="text-2xl font-black text-white">Verification in Progress</h3>
+              <p className="text-xs text-slate-300">Order ID: <span className="font-mono text-amber-300 font-bold">{orderPlaced.id}</span></p>
+            </div>
+
+            <div className="bg-[#1A2C21] p-4 rounded-2xl border border-[#2B4736] text-xs text-left space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Status:</span>
+                <span className="text-amber-300 font-black uppercase">Pending UTR Verification</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Total Amount:</span>
+                <span className="text-white font-black font-mono">₹{orderPlaced.amount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Kitchen ETA:</span>
+                <span className="text-emerald-300 font-bold">35 - 45 Mins (Post Verification)</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              Kitchen desk aapka payment verify karke khana dispatch karega. WhatsApp update pane ke liye click karein:
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <a
+                href={`https://wa.me/${waChefNumber}?text=${encodeURIComponent(
+                  `Namaste Bring My Bite! 🙏\nMaine Instant Thali order kiya hai:\n*Order ID:* ${orderPlaced.id}\n*Amount:* ₹${orderPlaced.amount}\n*Name:* ${customerName}\n*UTR:* ${utrNumber}\nKripya confirm karein!`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2"
+              >
+                <span>💬</span> Send Receipt on WhatsApp
+              </a>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="py-3 px-6 bg-[#1A2C21] hover:bg-[#243c2d] text-white font-bold text-xs rounded-xl"
+              >
+                Done
+              </button>
             </div>
           </div>
-
-          <button
-            onClick={() => {
-              setIsInstantOrderOpen(false);
-              setPlacedOrder(null);
-            }}
-            className="p-1.5 rounded-full text-emerald-200 hover:text-white hover:bg-emerald-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAF7F2]">
-          
-          {placedOrder ? (
-            /* Instant Order Confirmation Card */
-            <div className="bg-white rounded-3xl p-6 border-2 border-emerald-600 shadow-md text-center space-y-4">
-              <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle className="w-8 h-8" />
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <div className="inline-block bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-emerald-500/30 mb-1">
+                ⚡ 45-Min Express Kitchen
               </div>
+              <h3 className="text-2xl font-black text-white">Order 1-Time Fresh Thali</h3>
+              <p className="text-xs text-slate-400">Cooked fresh on order. Delivered warm in 5CP tray.</p>
+            </div>
 
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#C88A24] block">
-                  PAYMENT VERIFIED • ORDER DISPATCHED TO KITCHEN
-                </span>
-                <h3 className="text-xl font-bold text-gray-900 font-serif-title">
-                  Order #{placedOrder.id}
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Estimated Gate Arrival: <strong>40–50 Minutes</strong>.
-                </p>
-              </div>
-
-              {/* Status Breakdown */}
-              <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-gray-200 text-left text-xs space-y-2">
-                <div className="flex justify-between border-b border-gray-200 pb-1">
-                  <span className="text-gray-500">Meal:</span>
-                  <span className="font-bold capitalize text-gray-800">
-                    {placedOrder.quantity}x {placedOrder.thaliName}
-                  </span>
-                </div>
-                <div className="flex justify-between border-b border-gray-200 pb-1">
-                  <span className="text-gray-500">Slot:</span>
-                  <span className="font-bold text-gray-800">{placedOrder.mealSlot}</span>
-                </div>
-                <div className="flex justify-between border-b border-gray-200 pb-1">
-                  <span className="text-gray-500">Destination:</span>
-                  <span className="font-bold text-gray-800">{placedOrder.deliveryLocation}</span>
-                </div>
-                <div className="flex justify-between border-b border-gray-200 pb-1">
-                  <span className="text-gray-500">Payment:</span>
-                  <span className="font-extrabold text-emerald-800 text-sm">
-                    ₹{placedOrder.totalPrice} (Prepaid via {placedOrder.paymentMethod})
-                  </span>
-                </div>
-                <div className="flex justify-between pt-1">
-                  <span className="text-gray-500">Live Status:</span>
-                  <span className="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    {placedOrder.status}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 text-left">
-                📞 Delivery Captain will call <strong>+91 {placedOrder.customerPhone}</strong> upon reaching your gate.
-              </div>
-
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <a
-                  href="tel:9004848984"
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-gray-300"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>Call Kitchen: 9004848984</span>
-                </a>
+            {/* Select Thali Type */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-300">Select Meal Category:</label>
+              <div className="grid grid-cols-3 gap-2">
                 <button
-                  onClick={() => {
-                    setIsInstantOrderOpen(false);
-                    setPlacedOrder(null);
-                  }}
-                  className="px-6 py-2 bg-[#124E33] hover:bg-[#0A2A1B] text-white rounded-xl text-xs font-bold shadow-md"
+                  type="button"
+                  onClick={() => setMealType('veg')}
+                  className={`p-3 rounded-2xl border text-center transition cursor-pointer ${
+                    mealType === 'veg'
+                      ? 'bg-emerald-500/20 border-emerald-400 text-white ring-1 ring-emerald-400'
+                      : 'bg-[#1A2C21] border-[#2B4736] text-slate-300'
+                  }`}
                 >
-                  Close
+                  <span className="text-xs font-black block">🌱 Pure Veg</span>
+                  <span className="text-base font-mono font-black text-emerald-300">₹90</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMealType('egg')}
+                  className={`p-3 rounded-2xl border text-center transition cursor-pointer ${
+                    mealType === 'egg'
+                      ? 'bg-amber-500/20 border-amber-400 text-white ring-1 ring-amber-400'
+                      : 'bg-[#1A2C21] border-[#2B4736] text-slate-300'
+                  }`}
+                >
+                  <span className="text-xs font-black block">🍳 Egg Curry</span>
+                  <span className="text-base font-mono font-black text-amber-300">₹100</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMealType('chicken')}
+                  className={`p-3 rounded-2xl border text-center transition cursor-pointer ${
+                    mealType === 'chicken'
+                      ? 'bg-rose-500/20 border-rose-400 text-white ring-1 ring-rose-400'
+                      : 'bg-[#1A2C21] border-[#2B4736] text-slate-300'
+                  }`}
+                >
+                  <span className="text-xs font-black block">🍗 Chicken</span>
+                  <span className="text-base font-mono font-black text-rose-300">₹120</span>
                 </button>
               </div>
             </div>
-          ) : (
-            /* Order Form */
-            <form onSubmit={handleSubmit} className="space-y-4">
-              
-              {/* Thali Type Selector with Visual Dish Photos */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-                  Select Thali Variant:
-                </label>
-                <div className="grid grid-cols-3 gap-2.5">
-                  
-                  {/* Veg Thali Option */}
-                  <button
-                    type="button"
-                    onClick={() => setThaliType('veg')}
-                    className={`rounded-2xl border-2 text-left overflow-hidden transition-all relative ${
-                      thaliType === 'veg'
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900 shadow-md ring-2 ring-emerald-500/20 scale-[1.02]'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="h-16 w-full relative overflow-hidden bg-gray-100">
-                      <img
-                        src={FOOD_IMAGES.vegThali}
-                        alt="Veg Thali"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover"
-                      />
-                      {thaliType === 'veg' && (
-                        <div className="absolute top-1.5 right-1.5 bg-emerald-600 text-white rounded-full p-0.5">
-                          <Check className="w-3 h-3" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2 text-center">
-                      <span className="text-xs font-bold block leading-tight">Veg Thali</span>
-                      <span className="text-xs text-emerald-700 font-extrabold block mt-0.5">₹{pricing.vegThaliInstant}</span>
-                    </div>
-                  </button>
 
-                  {/* Egg Thali Option */}
-                  <button
-                    type="button"
-                    onClick={() => setThaliType('egg')}
-                    className={`rounded-2xl border-2 text-left overflow-hidden transition-all relative ${
-                      thaliType === 'egg'
-                        ? 'border-amber-600 bg-amber-50 text-amber-900 shadow-md ring-2 ring-amber-500/20 scale-[1.02]'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="h-16 w-full relative overflow-hidden bg-gray-100">
-                      <img
-                        src={FOOD_IMAGES.eggThali}
-                        alt="Egg Thali"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover"
-                      />
-                      {thaliType === 'egg' && (
-                        <div className="absolute top-1.5 right-1.5 bg-amber-600 text-white rounded-full p-0.5">
-                          <Check className="w-3 h-3" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2 text-center">
-                      <span className="text-xs font-bold block leading-tight">Egg Thali</span>
-                      <span className="text-xs text-amber-700 font-extrabold block mt-0.5">₹{pricing.eggThaliInstant}</span>
-                    </div>
-                  </button>
+            {/* Delivery Slot Selection */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-300">Meal Slot:</label>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSlot('Lunch (12:30-2:00 PM)')}
+                  className={`py-2 px-3 rounded-xl border font-bold transition cursor-pointer ${
+                    slot === 'Lunch (12:30-2:00 PM)'
+                      ? 'bg-emerald-500/20 border-emerald-400 text-white'
+                      : 'bg-[#1A2C21] border-[#2B4736] text-slate-400'
+                  }`}
+                >
+                  ☀️ Lunch (12:30 - 2:00 PM)
+                </button>
 
-                  {/* Non-Veg Thali Option */}
-                  <button
-                    type="button"
-                    onClick={() => setThaliType('non-veg')}
-                    className={`rounded-2xl border-2 text-left overflow-hidden transition-all relative ${
-                      thaliType === 'non-veg'
-                        ? 'border-rose-600 bg-rose-50 text-rose-900 shadow-md ring-2 ring-rose-500/20 scale-[1.02]'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="h-16 w-full relative overflow-hidden bg-gray-100">
-                      <img
-                        src={FOOD_IMAGES.nonVegThali}
-                        alt="Chicken Thali"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover"
-                      />
-                      {thaliType === 'non-veg' && (
-                        <div className="absolute top-1.5 right-1.5 bg-rose-600 text-white rounded-full p-0.5">
-                          <Check className="w-3 h-3" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2 text-center">
-                      <span className="text-xs font-bold block leading-tight">Chicken Thali</span>
-                      <span className="text-xs text-rose-700 font-extrabold block mt-0.5">₹{pricing.nonVegThaliInstant}</span>
-                    </div>
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => setSlot('Dinner (7:30-9:30 PM)')}
+                  className={`py-2 px-3 rounded-xl border font-bold transition cursor-pointer ${
+                    slot === 'Dinner (7:30-9:30 PM)'
+                      ? 'bg-emerald-500/20 border-emerald-400 text-white'
+                      : 'bg-[#1A2C21] border-[#2B4736] text-slate-400'
+                  }`}
+                >
+                  🌙 Dinner (7:30 - 9:30 PM)
+                </button>
+              </div>
+            </div>
 
+            {/* Customer Inputs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                <label className="text-slate-300 font-bold">Your Full Name:</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Rahul Sharma"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full bg-[#1A2C21] border border-[#2B4736] rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-bold">WhatsApp Phone Number:</label>
+                <input
+                  type="tel"
+                  required
+                  maxLength={10}
+                  placeholder="10-digit mobile"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                  className="w-full bg-[#1A2C21] border border-[#2B4736] rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-emerald-400"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1 text-xs">
+              <label className="text-slate-300 font-bold">Delivery Gate / Hostel / Flat Address:</label>
+              <textarea
+                required
+                rows={2}
+                placeholder="e.g. Room 204, Tower B, Stellar Mi City, Knowledge Park 3"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="w-full bg-[#1A2C21] border border-[#2B4736] rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-400"
+              />
+            </div>
+
+            {/* QR Payment & UTR Section */}
+            <div className="bg-[#1A2C21] p-4 rounded-2xl border border-amber-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider">UPI / QR Payment</span>
+                  <div className="text-white text-xs font-black">Scan & Pay ₹{currentPrice}</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 block">UPI ID:</span>
+                  <span className="font-mono text-xs font-black text-emerald-300">{config.upiId || '9315075165@upi'}</span>
                 </div>
               </div>
 
-              {/* Quantity & Slot Selector */}
-              <div className="grid grid-cols-2 gap-3 bg-white p-3.5 rounded-2xl border border-gray-200">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Quantity (Trays)</label>
-                  <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden w-fit">
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="px-4 py-1 font-bold text-sm text-gray-900">{quantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Delivery Slot</label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSlot('Lunch')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
-                        slot === 'Lunch' ? 'bg-[#124E33] text-white border-[#124E33]' : 'bg-gray-50 text-gray-700'
-                      }`}
-                    >
-                      ☀️ Lunch
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSlot('Dinner')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
-                        slot === 'Dinner' ? 'bg-[#124E33] text-white border-[#124E33]' : 'bg-gray-50 text-gray-700'
-                      }`}
-                    >
-                      🌙 Dinner
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div className="bg-white p-3.5 rounded-2xl border border-gray-200 space-y-3 text-xs">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Your Name *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Rahul Sen"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl outline-none focus:border-[#124E33]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Mobile Number *</label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="e.g. 9820144321"
-                      value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl outline-none focus:border-[#124E33]"
-                    />
-                  </div>
-                </div>
-
-                {/* Delivery Location Type */}
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Delivery Destination *</label>
-                  <div className="grid grid-cols-3 gap-1.5 mb-2">
-                    <button
-                      type="button"
-                      onClick={() => setDeliveryPointType('college')}
-                      className={`p-1.5 rounded-xl text-[11px] font-bold border ${
-                        deliveryPointType === 'college' ? 'bg-[#124E33] text-white border-[#124E33]' : 'bg-gray-50'
-                      }`}
-                    >
-                      🎓 College Gate
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeliveryPointType('office')}
-                      className={`p-1.5 rounded-xl text-[11px] font-bold border ${
-                        deliveryPointType === 'office' ? 'bg-[#124E33] text-white border-[#124E33]' : 'bg-gray-50'
-                      }`}
-                    >
-                      🏢 Office Gate
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeliveryPointType('home')}
-                      className={`p-1.5 rounded-xl text-[11px] font-bold border ${
-                        deliveryPointType === 'home' ? 'bg-[#124E33] text-white border-[#124E33]' : 'bg-gray-50'
-                      }`}
-                    >
-                      🏠 Home Society
-                    </button>
-                  </div>
-
+              {/* UTR Input & Screenshot Upload */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-300 font-bold">12-Digit UTR / Ref No:</label>
                   <input
                     type="text"
                     required
-                    placeholder={
-                      deliveryPointType === 'college'
-                        ? 'e.g. Heritage Institute Main Gate / Techno Gate 1'
-                        : deliveryPointType === 'office'
-                        ? 'e.g. DLF 1 Reception / Wipro Gate 2'
-                        : 'e.g. Green Valley Apts, Flat 301, Sector 2'
-                    }
-                    value={locationDetail}
-                    onChange={(e) => setLocationDetail(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl outline-none focus:border-[#124E33]"
+                    placeholder="e.g. 4085XXXXXXXX"
+                    value={utrNumber}
+                    onChange={(e) => setUtrNumber(e.target.value)}
+                    className="w-full bg-[#132018] border border-[#2B4736] rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-amber-400 text-xs"
                   />
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Special Note (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Less spicy, extra salad"
-                    value={specialInstructions}
-                    onChange={(e) => setSpecialInstructions(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Payment Section for Instant Orders */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Instant Prepaid Checkout:
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-300 font-bold">Upload Screenshot (Optional):</label>
+                  <label className="w-full bg-[#132018] border border-[#2B4736] hover:border-amber-400 rounded-xl px-3 py-2 text-slate-300 text-xs flex items-center justify-between cursor-pointer">
+                    <span className="truncate">{paymentSlip ? '✅ Slip Attached' : '📸 Choose Slip'}</span>
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                   </label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('UPI')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold border ${
-                        paymentMethod === 'UPI' ? 'bg-[#124E33] text-white border-[#124E33]' : 'bg-white text-gray-700'
-                      }`}
-                    >
-                      UPI / QR
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('Bank Transfer')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold border ${
-                        paymentMethod === 'Bank Transfer' ? 'bg-[#124E33] text-white border-[#124E33]' : 'bg-white text-gray-700'
-                      }`}
-                    >
-                      Axis NetBanking
-                    </button>
-                  </div>
-                </div>
-
-                <PaymentDetailsCard
-                  amount={totalAmount}
-                  orderReference={`Instant-${thaliType}-${quantity}x`}
-                />
-
-                <div className="bg-white p-3 rounded-2xl border border-gray-200">
-                  <label className="block font-semibold text-gray-700 text-xs mb-1">
-                    UPI Transaction UTR / Ref No. (Optional):
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 423984128912 or Axis IMPS Ref"
-                    value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs font-mono outline-none"
-                  />
                 </div>
               </div>
+            </div>
 
-              {/* Total & Submit Button */}
-              <div className="bg-[#0D3823] p-4 rounded-2xl text-white flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-emerald-200 block">Total Amount:</span>
-                  <span className="text-2xl font-black text-[#F2C94C]">₹{totalAmount}</span>
-                  <span className="text-[10px] text-emerald-300 block">100% Prepaid via Axis Bank / UPI</span>
-                </div>
-
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-[#C88A24] hover:bg-[#A97116] text-black font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-1.5"
-                >
-                  <Zap className="w-4 h-4 fill-black" />
-                  <span>Confirm Prepaid Order (₹{totalAmount})</span>
-                </button>
-              </div>
-
-            </form>
-          )}
-
-        </div>
-
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black rounded-2xl shadow-xl transition cursor-pointer text-sm"
+            >
+              {isSubmitting ? 'Placing in Queue...' : `Confirm & Place Order (₹${currentPrice})`}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
 };
-
