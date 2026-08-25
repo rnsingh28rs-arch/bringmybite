@@ -20,13 +20,27 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
   refreshToken = data.refresh_token || '';
   localStorage.setItem('bmb_supabase_access_token', accessToken);
   localStorage.setItem('bmb_supabase_refresh_token', refreshToken);
-  return { id: data.user?.id, email: data.user?.email, access_token: accessToken, refresh_token: refreshToken };
+  return { id: data.user?.id, email: data.user?.email, access_token: accessToken, refresh_token: data.refresh_token };
 }
 
 export function restoreSession() {
   accessToken = localStorage.getItem('bmb_supabase_access_token') || '';
   refreshToken = localStorage.getItem('bmb_supabase_refresh_token') || '';
   return Boolean(accessToken || refreshToken);
+}
+
+export async function getCurrentUser(): Promise<AuthUser | null> {
+  if (!isSupabaseConfigured) return null;
+  restoreSession();
+  if (!accessToken && !refreshToken) return null;
+  if (!accessToken && !(await refreshAccessToken())) return null;
+  let response = await fetch(`${config.url}/auth/v1/user`, { headers: { apikey: config.anonKey, Authorization: `Bearer ${accessToken}` } });
+  if (response.status === 401 && await refreshAccessToken()) {
+    response = await fetch(`${config.url}/auth/v1/user`, { headers: { apikey: config.anonKey, Authorization: `Bearer ${accessToken}` } });
+  }
+  if (!response.ok) return null;
+  const user = await response.json();
+  return { id: user.id, email: user.email, access_token: accessToken, refresh_token: refreshToken };
 }
 
 export function signOut() {
@@ -92,6 +106,6 @@ export async function supabasePatch<T>(table: string, query: string, body: Parti
 export async function supabaseDelete(table: string, query: string): Promise<void> {
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
   let response = await fetch(`${config.url}/rest/v1/${table}?${query}`, { method: 'DELETE', headers: headers() });
-  if (response.status === 401 && await refreshAccessToken()) response = await fetch(`${config.url}/rest/v1/${table}?${query}`, { method: 'DELETE', headers: headers() });
+  if (response.status === 401 && await refreshAccessToken()) response = await fetch(`${config.url}/rest/v1/${table}?${query}`, { headers: headers() });
   if (!response.ok) throw new Error(await response.text());
 }
