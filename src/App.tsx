@@ -27,11 +27,24 @@ import { MobileAppFrame } from './components/mobile/MobileAppFrame';
 import { DAdminDesigner } from './components/panels/DAdminDesigner';
 import { CalculatorWidget } from './components/common/CalculatorWidget';
 import { CmsProvider } from './cms/CmsContext';
+import { isSupabaseConfigured } from './cms/supabaseRest';
+
+const LockedDAdminNotice: React.FC = () => (
+  <div className="min-h-screen bg-[#F6F3EC] flex items-center justify-center p-5">
+    <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-7 text-center space-y-3">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-amber-600 font-black">D-ADMIN DESIGNER</div>
+      <h1 className="text-2xl font-black text-[#124E33]">D-Admin is locked</h1>
+      <p className="text-sm text-gray-600">Supabase authentication is required. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY before enabling the admin control centre.</p>
+      <button onClick={() => window.location.assign('/')} className="mt-2 px-4 py-2.5 rounded-xl bg-[#124E33] text-white font-bold">Return to Website</button>
+    </div>
+  </div>
+);
 
 const MainContent: React.FC = () => {
-  const { activeRole, setActiveRole, openStaffLogin, authenticatedRoles } = useApp();
+  const { activeRole, setActiveRole, openStaffLogin } = useApp();
 
-  // Support direct route checking e.g. /admin in URL
+  // Staff routes always require a fresh authentication check. Never trust a
+  // client-side authenticatedRoles flag to unlock an operational workspace.
   useEffect(() => {
     const onPop = () => {
       const p = window.location.pathname.toLowerCase();
@@ -41,85 +54,48 @@ const MainContent: React.FC = () => {
     const path = window.location.pathname.toLowerCase();
     const hash = window.location.hash.toLowerCase();
     const search = window.location.search.toLowerCase();
-    
+
     if (path.includes('/admin') || hash.includes('admin') || search.includes('role=admin')) {
-      if (authenticatedRoles.admin) {
-        setActiveRole('admin');
-      } else {
-        openStaffLogin('admin');
-      }
+      setActiveRole('customer');
+      openStaffLogin('admin');
     } else if (path.includes('/manager') || hash.includes('manager') || search.includes('role=manager')) {
-      if (authenticatedRoles.manager) {
-        setActiveRole('manager');
-      } else {
-        openStaffLogin('manager');
-      }
+      setActiveRole('customer');
+      openStaffLogin('manager');
     } else if (path.includes('/chef') || hash.includes('chef') || search.includes('role=chef')) {
-      if (authenticatedRoles.chef) {
-        setActiveRole('chef');
-      } else {
-        openStaffLogin('chef');
-      }
+      setActiveRole('customer');
+      openStaffLogin('chef');
     }
     return () => window.removeEventListener('popstate', onPop);
-  }, [setActiveRole, openStaffLogin, authenticatedRoles]);
+  }, [setActiveRole, openStaffLogin]);
 
   if (window.location.pathname.toLowerCase().startsWith('/d-admin') || window.location.hash.toLowerCase() === '#d-admin' || window.location.hash.toLowerCase() === '#superadmin') {
-    return <DAdminDesigner />;
+    return isSupabaseConfigured ? <DAdminDesigner /> : <LockedDAdminNotice />;
   }
 
   return (
     <MobileAppFrame>
       <div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans">
-        
-        {/* Top Info Bar */}
         <TopBar />
-
-        {/* Global Navigation Header (Public Customer Header) */}
         <Header />
-
-        {/* Running Strip showing Today's Menu */}
         <TodayMenuTicker />
-
-        {/* Staff Workspace Top Navigation (Only shown when Admin/Manager/Chef is active) */}
         {activeRole !== 'customer' && <StaffNavBar />}
-
-        {/* Main Workspace Body based on Active Role */}
         <main className="flex-1">
           {activeRole === 'customer' && (
             <>
-              {/* Expiry Reminder Notification Banner */}
               <ExpiryReminderBanner />
               <OrderStatusNotifier />
-
-              {/* 4 Feature Banners + Thali Card */}
               <HeroBanner />
-
-              {/* 3 Monthly Subscription Packages (Veg, Egg, Non-Veg) */}
               <PackagesSection />
-
-              {/* Delivery Model (College/Office Gate) + Why Us + Today's Menu */}
               <LowerFeaturesGrid />
             </>
           )}
-
           {activeRole === 'admin' && <AdminPanel />}
-
           {activeRole === 'manager' && <ManagerPanel />}
-
           {activeRole === 'chef' && <ChefPanel />}
         </main>
-
-        {/* Calculator is for staff workspaces only. Customer gets the support chatbot instead. */}
         {(activeRole === 'manager' || activeRole === 'chef') && <CalculatorWidget />}
-
-        {/* Global Footer */}
         <Footer />
-
-        {/* Floating Support & Quick Order Chat Box */}
         {activeRole === 'customer' && <ChatBox />}
-
-        {/* Interactive Modals */}
         <WeeklyMenuModal />
         <RegistrationModal />
         <InstantOrderModal />
@@ -129,7 +105,6 @@ const MainContent: React.FC = () => {
         <ReminderPreviewModal />
         <NativeAppDownloadModal />
         <StaffLoginModal />
-
       </div>
     </MobileAppFrame>
   );
