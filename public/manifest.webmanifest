@@ -1,0 +1,48 @@
+{
+  "id": "com.bringmybite.app",
+  "short_name": "BringMyBite",
+  "name": "Bring My Bite - Homely Tiffin Service",
+  "description": "Premium Homely Tiffin Service for Students and Working Professionals by Shree Foods.",
+  "categories": ["food", "lifestyle", "shopping"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C3822",
+  "theme_color": "#0C3822",
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Order Instant Thali",
+      "url": "/#order-instant",
+      "description": "Order today's hot fresh homely meal"
+    },
+    {
+      "name": "Monthly Meal Plans",
+      "url": "/#subscriptions",
+      "description": "Subscribe to student or corporate tiffin box"
+    }
+  ]
+}
