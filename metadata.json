@@ -1,0 +1,6 @@
+{
+  "name": "Bring My Bite - Homely Tiffin Service",
+  "description": "Premium monthly subscription tiffin service and instant thali delivery by Shree Foods with native Android and iOS mobile app experiences, interactive mobile simulators, and multi-role operations portals.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
