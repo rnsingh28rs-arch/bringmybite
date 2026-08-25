@@ -11,13 +11,13 @@ export type PaymentMethod = 'UPI' | 'Bank Transfer' | 'QR Code' | 'Corporate Ban
 export type ThaliType = 'veg' | 'egg' | 'non-veg';
 
 export interface Subscription {
-  id: string; // e.g. BMB-1082
+  id: string;
   customerName: string;
   mobileNumber: string;
   whatsappNumber: string;
   dateOfBirth?: string;
   category: CustomerCategory;
-  
+
   // Student Details
   collegeName?: string;
   courseSemester?: string;
@@ -45,12 +45,12 @@ export interface Subscription {
   mealPreference: MealPreference;
   startDate: string;
   duration: SubscriptionDuration;
-  expiryDate: string; // Calculated end date
+  expiryDate: string;
 
   // Referral System
   myReferralCode?: string;
   referredByCode?: string;
-  complimentarySweetsEarnedWeeks?: number; // 1 week free sweets per referral
+  complimentarySweetsEarnedWeeks?: number;
 
   // Bi-Monthly Bonus
   biMonthlyBonusClaimed?: string[];
@@ -65,7 +65,7 @@ export interface Subscription {
   amountPaid: number;
   paymentDate: string;
   verificationStatus: 'Approved' | 'Pending' | 'Rejected';
-  routeCode: string; // e.g. L-04, D-02
+  routeCode: string;
   executiveName?: string;
   createdAt: string;
   active: boolean;
@@ -79,7 +79,7 @@ export interface ReferralRecord {
   referrerPhone: string;
   referredCustomerName: string;
   referredCustomerId: string;
-  reward: string; // e.g. "1 Week Complimentary Sweets (7 Days)"
+  reward: string;
   rewardStatus: 'Active' | 'Redeemed' | 'Delivered';
   dateAwarded: string;
 }
@@ -95,7 +95,7 @@ export interface BonusOffer {
 }
 
 export interface InstantOrder {
-  id: string; // e.g. BMB-ORD-501
+  id: string;
   customerName: string;
   customerPhone: string;
   thaliType: ThaliType;
@@ -105,11 +105,27 @@ export interface InstantOrder {
   totalPrice: number;
   mealSlot: 'Lunch' | 'Dinner';
   deliveryCategory: CustomerCategory;
-  deliveryLocation: string; // e.g. "Main College Gate, Techno Campus" or "Office Gate 2"
+  deliveryLocation: string;
+
+  // Current GPS / Google Maps Location
+  mapLocationLink?: string;
+
   specificInstructions?: string;
-  status: 'Received' | 'Pending Verification' | 'Cooking' | 'Dispatched' | 'Delivered' | 'Cancelled';
+
+  status:
+    | 'Received'
+    | 'Pending Verification'
+    | 'Cooking'
+    | 'Dispatched'
+    | 'Delivered'
+    | 'Cancelled';
+
   paymentMethod: PaymentMethod;
-  paymentStatus: 'Paid' | 'Prepaid Verified' | 'Pending Verification';
+  paymentStatus:
+    | 'Paid'
+    | 'Prepaid Verified'
+    | 'Pending Verification';
+
   orderTime: string;
   estimatedDelivery: string;
 }
@@ -119,27 +135,52 @@ export interface DayMealItem {
   dryVeg: string;
   gravyOrNonVeg: string;
   rice: string;
-  foilPacked: string; // e.g. "4 Roti + 1 Papad"
-  extras: string; // e.g. "Salad & Achar"
+  foilPacked: string;
+  extras: string;
 }
 
 export interface DayMenuSchedule {
-  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+  day:
+    | 'Monday'
+    | 'Tuesday'
+    | 'Wednesday'
+    | 'Thursday'
+    | 'Friday'
+    | 'Saturday'
+    | 'Sunday';
+
   lunch: DayMealItem;
-  dinner: DayMealItem | null; // Sunday dinner is OFF
+  dinner: DayMealItem | null;
 }
 
 export interface InventoryItem {
   id: string;
   name: string;
-  category: 'Grains & Pulses' | 'Dairy & Poultry' | 'Fresh Vegetables' | 'Spices & Oils' | 'Packaging & Consumables';
+  category:
+    | 'Grains & Pulses'
+    | 'Dairy & Poultry'
+    | 'Fresh Vegetables'
+    | 'Spices & Oils'
+    | 'Packaging & Consumables';
+
   currentStock: number;
-  unit: 'kg' | 'liters' | 'pieces' | 'packets' | 'boxes';
+
+  unit:
+    | 'kg'
+    | 'liters'
+    | 'pieces'
+    | 'packets'
+    | 'boxes';
+
   minThreshold: number;
   costPerUnit: number;
   supplier: string;
   lastRestocked: string;
-  status: 'In Stock' | 'Low Stock' | 'Critical';
+
+  status:
+    | 'In Stock'
+    | 'Low Stock'
+    | 'Critical';
 }
 
 export interface ChefIndentRequest {
@@ -147,11 +188,24 @@ export interface ChefIndentRequest {
   itemName: string;
   quantityNeeded: number;
   unit: string;
-  priority: 'Urgent (Today)' | 'Standard (Tomorrow)' | 'Weekly Buffer';
+
+  priority:
+    | 'Urgent (Today)'
+    | 'Standard (Tomorrow)'
+    | 'Weekly Buffer';
+
   notes?: string;
   chefName: string;
   requestedTime: string;
-  status: 'Pending Approval' | 'Approved' | 'Ordered' | 'Purchased' | 'Delivered' | 'Rejected';
+
+  status:
+    | 'Pending Approval'
+    | 'Approved'
+    | 'Ordered'
+    | 'Purchased'
+    | 'Delivered'
+    | 'Rejected';
+
   approvedBy?: string;
 }
 
@@ -175,4 +229,8 @@ export interface ChatMessage {
   suggestions?: string[];
 }
 
-export type ActiveRole = 'customer' | 'admin' | 'manager' | 'chef';
+export type ActiveRole =
+  | 'customer'
+  | 'admin'
+  | 'manager'
+  | 'chef';
