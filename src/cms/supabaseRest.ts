@@ -20,7 +20,7 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
   refreshToken = data.refresh_token || '';
   localStorage.setItem('bmb_supabase_access_token', accessToken);
   localStorage.setItem('bmb_supabase_refresh_token', refreshToken);
-  return { id: data.user?.id, email: data.user?.email, access_token: accessToken, refresh_token: data.refresh_token };
+  return { id: data.user?.id, email: data.user?.email, access_token: accessToken, refresh_token: refreshToken };
 }
 
 export function restoreSession() {
@@ -106,6 +106,6 @@ export async function supabasePatch<T>(table: string, query: string, body: Parti
 export async function supabaseDelete(table: string, query: string): Promise<void> {
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
   let response = await fetch(`${config.url}/rest/v1/${table}?${query}`, { method: 'DELETE', headers: headers() });
-  if (response.status === 401 && await refreshAccessToken()) response = await fetch(`${config.url}/rest/v1/${table}?${query}`, { headers: headers() });
+  if (response.status === 401 && await refreshAccessToken()) response = await fetch(`${config.url}/rest/v1/${table}?${query}`, { method: 'DELETE', headers: headers() });
   if (!response.ok) throw new Error(await response.text());
 }
