@@ -110,13 +110,14 @@ const MainContent: React.FC = () => {
           {activeRole === 'chef' && <ChefPanel />}
         </main>
 
-        <CalculatorWidget />
+        {/* Calculator is for staff workspaces only. Customer gets the support chatbot instead. */}
+        {(activeRole === 'manager' || activeRole === 'chef') && <CalculatorWidget />}
 
         {/* Global Footer */}
         <Footer />
 
         {/* Floating Support & Quick Order Chat Box */}
-        <ChatBox />
+        {activeRole === 'customer' && <ChatBox />}
 
         {/* Interactive Modals */}
         <WeeklyMenuModal />
