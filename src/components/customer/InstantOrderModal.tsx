@@ -43,6 +43,8 @@ export const InstantOrderModal: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
   const [transactionId, setTransactionId] = useState('');
   const [paymentSlip, setPaymentSlip] = useState('');
+  const [mapLocationUrl, setMapLocationUrl] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
 
   // Placed Order Success state
   const [placedOrder, setPlacedOrder] = useState<any | null>(null);
@@ -84,6 +86,33 @@ export const InstantOrderModal: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Current location is not supported by this browser. Please enter your delivery location manually.');
+      return;
+    }
+
+    setIsLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lng = position.coords.longitude.toFixed(6);
+        setMapLocationUrl(`https://www.google.com/maps?q=${lat},${lng}`);
+        setIsLocating(false);
+      },
+      () => {
+        setIsLocating(false);
+        alert('Could not get your current location. Please allow location permission and try again.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000
+      }
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName.trim() || !mobileNumber.trim() || !locationDetail.trim()) {
@@ -119,7 +148,7 @@ export const InstantOrderModal: React.FC = () => {
     void addStoredOrder({
       id: order.id, kind: 'instant', customerName, phone: mobileNumber, planOrMeal: `${quantity}x ${thaliDisplayName} (${slot})`,
       amount: totalAmount, utrNumber: transactionId.trim(), paymentSlip, paymentStatus: 'Pending Verification', status: 'Pending Verification',
-      details: `${deliveryPointType}: ${locationDetail}${specialInstructions ? ` | ${specialInstructions}` : ''}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+      details: `${deliveryPointType}: ${locationDetail}${mapLocationUrl ? ` | Current GPS: ${mapLocationUrl}` : ''}${specialInstructions ? ` | ${specialInstructions}` : ''}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
     });
 
     try {
@@ -464,6 +493,31 @@ export const InstantOrderModal: React.FC = () => {
                     onChange={(e) => setLocationDetail(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-xl outline-none focus:border-[#124E33]"
                   />
+
+                  <button
+                    type="button"
+                    onClick={useCurrentLocation}
+                    disabled={isLocating}
+                    className="mt-2 w-full px-3 py-2 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 font-bold text-xs hover:bg-emerald-100 transition-all disabled:opacity-60"
+                  >
+                    <MapPin className="w-3.5 h-3.5 inline-block mr-1" />
+                    {isLocating
+                      ? 'Detecting current location…'
+                      : mapLocationUrl
+                      ? '✓ Current location captured'
+                      : 'Use My Current Location'}
+                  </button>
+
+                  {mapLocationUrl && (
+                    <a
+                      href={mapLocationUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block mt-1 text-[11px] text-emerald-700 underline"
+                    >
+                      Open captured location in Google Maps
+                    </a>
+                  )}
                 </div>
 
                 <div>
@@ -555,4 +609,3 @@ export const InstantOrderModal: React.FC = () => {
     </div>
   );
 };
-
