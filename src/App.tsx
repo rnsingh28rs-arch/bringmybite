@@ -28,9 +28,10 @@ import { DAdminDesigner } from './components/panels/DAdminDesigner';
 import { DAdminGuard } from './components/panels/DAdminGuard';
 import { CalculatorWidget } from './components/common/CalculatorWidget';
 import { CmsProvider } from './cms/CmsContext';
-import { isSupabaseConfigured } from './cms/supabaseRest';
+import { getCurrentUser, isSupabaseConfigured, signOut, supabaseSelect } from './cms/supabaseRest';
 
 type StaffRole = 'admin' | 'manager' | 'chef';
+type StaffAccount = { user_id: string; email: string; role_id: StaffRole; active: boolean };
 
 const LockedDAdminNotice: React.FC = () => (
   <div className="min-h-screen bg-[#F6F3EC] flex items-center justify-center p-5"><div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-7 text-center space-y-3"><div className="text-[10px] uppercase tracking-[0.22em] text-amber-600 font-black">D-ADMIN DESIGNER</div><h1 className="text-2xl font-black text-[#124E33]">D-Admin is locked</h1><p className="text-sm text-gray-600">Supabase authentication is required before the admin control centre can be opened.</p><button onClick={() => window.location.assign('/')} className="mt-2 px-4 py-2.5 rounded-xl bg-[#124E33] text-white font-bold">Return to Website</button></div></div>
@@ -48,6 +49,35 @@ const MainContent: React.FC = () => {
     window.addEventListener('bmb:staff-authenticated', onAuth);
     return () => window.removeEventListener('bmb:staff-authenticated', onAuth);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const restoreVerifiedStaff = async () => {
+      if (!isSupabaseConfigured) return;
+      try {
+        const auth = await getCurrentUser();
+        if (!auth?.id || cancelled) return;
+        const rows = await supabaseSelect<StaffAccount>(
+          'bmb_admin_users',
+          `select=user_id,email,role_id,active&user_id=eq.${encodeURIComponent(auth.id)}&limit=1`
+        );
+        const account = rows[0];
+        if (!account?.active || !['admin', 'manager', 'chef'].includes(account.role_id)) {
+          signOut();
+          return;
+        }
+        if (!cancelled) {
+          setVerifiedStaffRole(account.role_id);
+          setActiveRole(account.role_id);
+          window.dispatchEvent(new CustomEvent('bmb:staff-authenticated', { detail: { role: account.role_id, restored: true } }));
+        }
+      } catch {
+        if (!cancelled) setVerifiedStaffRole(null);
+      }
+    };
+    void restoreVerifiedStaff();
+    return () => { cancelled = true; };
+  }, [setActiveRole]);
 
   useEffect(() => {
     const onPop = () => { const p = window.location.pathname.toLowerCase(); if (p === '/' || p === '') { setActiveRole('customer'); setVerifiedStaffRole(null); } };
