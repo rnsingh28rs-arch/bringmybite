@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { MessageCircle, X, Send, Utensils, HelpCircle, PhoneCall } from 'lucide-react';
+import { MessageCircle, X, Send, Utensils, HelpCircle, PhoneCall, Search, CheckCircle2, CookingPot, Truck, Clock3 } from 'lucide-react';
+import { getPublicOrderStatus } from '../../utils/orderStore';
 
 export const ChatBox: React.FC = () => {
   const {
@@ -13,13 +14,63 @@ export const ChatBox: React.FC = () => {
   } = useApp();
 
   const [inputVal, setInputVal] = useState('');
+  const [trackOpen, setTrackOpen] = useState(false);
+  const [trackOrderId, setTrackOrderId] = useState('');
+  const [trackPhone, setTrackPhone] = useState('');
+  const [trackStatus, setTrackStatus] = useState<any>(null);
+  const [trackError, setTrackError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const order = params.get('trackOrder');
+    const phone = params.get('trackPhone');
+    if (order && phone) {
+      setIsChatOpen(true);
+      setTrackOrderId(order);
+      setTrackPhone(phone);
+      setTrackOpen(true);
+    }
+  }, [setIsChatOpen]);
 
   useEffect(() => {
     if (isChatOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatMessages, isChatOpen]);
+
+  const loadTracking = async () => {
+    setTrackError('');
+    setTrackStatus(null);
+    if (!trackOrderId.trim() || !trackPhone.trim()) {
+      setTrackError('Please enter both Order ID and phone number.');
+      return;
+    }
+    const result = await getPublicOrderStatus(trackOrderId.trim(), trackPhone.trim());
+    if (!result) {
+      setTrackError('Order not found. Please check the Order ID and phone number.');
+      return;
+    }
+    setTrackStatus(result);
+  };
+
+  useEffect(() => {
+    if (!trackStatus || !trackOpen) return;
+    const timer = window.setInterval(async () => {
+      const result = await getPublicOrderStatus(trackOrderId.trim(), trackPhone.trim());
+      if (result) setTrackStatus(result);
+    }, 8000);
+    return () => window.clearInterval(timer);
+  }, [trackStatus, trackOpen, trackOrderId, trackPhone]);
+
+  const trackerSteps = [
+    ['Pending Verification', 'Payment verification', Clock3],
+    ['Approved', 'Payment verified', CheckCircle2],
+    ['Preparing', 'Food is being prepared', CookingPot],
+    ['Dispatched', 'Order is on the way', Truck],
+    ['Delivered', 'Delivered', CheckCircle2]
+  ] as const;
+  const statusRank: Record<string, number> = { 'Pending Verification': 0, Approved: 1, Preparing: 2, Dispatched: 3, Delivered: 4, Declined: -1 };
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +133,47 @@ export const ChatBox: React.FC = () => {
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+
+          {/* Chef Welcome */}
+          <div className="bg-[#FDF7E7] border-b border-[#E8D5A6] px-4 py-3 flex items-center gap-3">
+            <div className="text-6xl leading-none animate-bounce" aria-hidden="true">👨‍🍳</div>
+            <div>
+              <div className="font-black text-[#124E33]">Namaste! 🙏</div>
+              <div className="text-[11px] text-gray-600">Your BringMyBite chef is ready.</div>
+            </div>
+          </div>
+
+          {/* Order Tracker */}
+          <div className="bg-white border-b border-gray-200 p-3">
+            <button onClick={() => setTrackOpen(v => !v)} className="w-full flex items-center justify-between text-xs font-black text-[#124E33]">
+              <span className="flex items-center gap-2"><Search className="w-4 h-4"/> Track My Order</span>
+              <span>{trackOpen ? 'Hide' : 'Open'}</span>
+            </button>
+            {trackOpen && (
+              <div className="mt-3 space-y-2">
+                <input value={trackOrderId} onChange={e => setTrackOrderId(e.target.value)} placeholder="Order ID e.g. ORD-742" className="w-full px-3 py-2 text-xs border rounded-xl outline-none focus:border-[#124E33]"/>
+                <input value={trackPhone} onChange={e => setTrackPhone(e.target.value)} placeholder="Phone number" inputMode="tel" className="w-full px-3 py-2 text-xs border rounded-xl outline-none focus:border-[#124E33]"/>
+                <button onClick={() => void loadTracking()} className="w-full py-2 rounded-xl bg-[#124E33] text-white text-xs font-black">Check Live Status</button>
+                {trackError && <p className="text-[11px] text-rose-600 font-semibold">{trackError}</p>}
+                {trackStatus && (
+                  <div className="mt-2 rounded-xl bg-[#FAF7F2] border p-3">
+                    <div className="text-[10px] uppercase tracking-wider font-black text-gray-500 mb-2">Live Order Tracker</div>
+                    <div className="space-y-2">
+                      {trackerSteps.map(([key, label, Icon], index) => {
+                        const active = statusRank[trackStatus.status] >= index;
+                        return <div key={key} className={`flex items-center gap-2 text-[11px] ${active ? 'text-[#124E33] font-black' : 'text-gray-400'}`}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${active ? 'bg-emerald-100' : 'bg-gray-100'}`}><Icon className="w-3.5 h-3.5"/></div>
+                          <span>{label}</span>
+                          {trackStatus.status === key && <span className="ml-auto text-[9px] uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Current</span>}
+                        </div>;
+                      })}
+                    </div>
+                    <p className="mt-2 text-[9px] text-gray-500">Updates automatically every few seconds while this chat is open.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Messages Area */}
