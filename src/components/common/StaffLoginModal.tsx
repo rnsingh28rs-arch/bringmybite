@@ -24,12 +24,13 @@ export const StaffLoginModal: React.FC = () => {
     setIsStaffLoginOpen(false); setTargetStaffRole(null); setActiveRole('customer'); setPin(''); setErrorMsg(''); setSuccessMsg('');
     window.dispatchEvent(new CustomEvent('bmb:staff-login-dismissed'));
   };
-  const chooseRole = (role: StaffRole) => { setSelectedRole(role); setTargetStaffRole(role); setErrorMsg(''); setSuccessMsg(''); setPin(''); };
+  const chooseRole = (role: StaffRole) => { setSelectedRole(role); setTargetStaffRole(role as 'admin'|'manager'|'chef'); setErrorMsg(''); setSuccessMsg(''); setPin(''); };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); setErrorMsg(''); setSuccessMsg('');
     if (!isSupabaseConfigured) { setErrorMsg('Staff authentication is unavailable because Supabase is not configured.'); return; }
     const cleanPin = pin.trim();
-    if (!/^\d{4,8}$/.test(cleanPin)) { setErrorMsg('Enter your 4–8 digit staff PIN.'); return; }
+    if (!/^\d{6}$/.test(cleanPin)) { setErrorMsg('Enter your configured 6-digit staff PIN.'); return; }
     setBusy(true);
     try {
       const session = await signInWithStaffPin(selectedRole, cleanPin);
@@ -53,7 +54,7 @@ export const StaffLoginModal: React.FC = () => {
   return <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
     <div className="bg-[#FAF7F2] rounded-3xl w-full max-w-sm shadow-2xl border-2 border-[#124E33] overflow-hidden">
       <div className="bg-[#0C3822] text-white p-5 flex items-center justify-between">
-        <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-[#F2C94C] text-black flex items-center justify-center"><Lock className="w-5 h-5"/></div><div><h2 className="text-lg font-bold text-[#F2C94C]">Staff Login</h2><p className="text-xs text-emerald-200">Choose role → enter PIN</p></div></div>
+        <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-[#F2C94C] text-black flex items-center justify-center"><Lock className="w-5 h-5"/></div><div><h2 className="text-lg font-bold text-[#F2C94C]">Staff Login</h2><p className="text-xs text-emerald-200">Choose role → enter 6-digit PIN</p></div></div>
         <button type="button" aria-label="Close staff login" onClick={closeLogin} className="p-2 rounded-xl text-emerald-300 hover:text-white"><X className="w-5 h-5"/></button>
       </div>
       <div className="p-4 grid grid-cols-4 gap-2 border-b border-gray-200">
@@ -61,11 +62,11 @@ export const StaffLoginModal: React.FC = () => {
       </div>
       <form onSubmit={handleLogin} className="p-5 space-y-4">
         <div className="p-3.5 bg-white rounded-2xl border border-gray-200"><div className="flex items-center gap-2 font-bold text-sm text-gray-900">{roleMeta[selectedRole].icon}{roleMeta[selectedRole].title}</div><p className="text-xs text-gray-600 mt-1">{roleMeta[selectedRole].description}</p></div>
-        <label className="block text-xs font-bold text-gray-700">Staff PIN<input className="w-full mt-1.5 px-4 py-4 bg-white border border-gray-300 rounded-xl text-center text-2xl tracking-[0.45em] font-mono outline-none focus:ring-2 focus:ring-[#124E33]" type="password" inputMode="numeric" pattern="[0-9]*" maxLength={8} autoComplete="current-password" placeholder="••••" value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,'').slice(0,8))} autoFocus/></label>
+        <label className="block text-xs font-bold text-gray-700">Staff PIN<input className="w-full mt-1.5 px-4 py-4 bg-white border border-gray-300 rounded-xl text-center text-2xl tracking-[0.45em] font-mono outline-none focus:ring-2 focus:ring-[#124E33]" type="password" inputMode="numeric" pattern="[0-9]{6}" minLength={6} maxLength={6} autoComplete="current-password" placeholder="••••••" value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,'').slice(0,6))} autoFocus/></label>
         {errorMsg&&<div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0"/>{errorMsg}</div>}
         {successMsg&&<div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 shrink-0"/>{successMsg}</div>}
         <button disabled={busy} type="submit" className="w-full py-3.5 bg-[#124E33] disabled:opacity-60 text-white font-bold text-sm rounded-xl shadow-lg flex items-center justify-center gap-2"><ShieldCheck className="w-4 h-4 text-[#F2C94C]"/><span>{busy?'Signing in…':`Enter ${roleMeta[selectedRole].title}`}</span><ArrowRight className="w-4 h-4"/></button>
-        <p className="text-[11px] text-gray-400 text-center">PIN is verified server-side. No staff email is shown or entered here.</p>
+        <p className="text-[11px] text-gray-400 text-center">PIN is verified against Supabase staff configuration. No staff email is shown or entered here.</p>
       </form>
     </div>
   </div>;
