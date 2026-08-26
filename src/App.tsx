@@ -57,17 +57,12 @@ const MainContent: React.FC = () => {
       try {
         const auth = await getCurrentUser();
         if (!auth?.id || cancelled) return;
-
-        // Use the SECURITY DEFINER RPC instead of a direct browser GET
-        // against bmb_admin_users, which is protected by RLS.
         const rows = await supabaseRpc<StaffAccount>('bmb_get_staff_account');
         const account = rows[0];
-
         if (!account?.active || !['admin', 'manager', 'chef'].includes(account.role_id)) {
           signOut();
           return;
         }
-
         if (!cancelled) {
           setVerifiedStaffRole(account.role_id);
           setActiveRole(account.role_id);
@@ -81,17 +76,37 @@ const MainContent: React.FC = () => {
     return () => { cancelled = true; };
   }, [setActiveRole]);
 
+  // Resolve /admin, /manager and /chef only once on initial page load.
+  // openStaffLogin is recreated by AppContext on each render; including it
+  // in this dependency list caused the modal to reopen after a successful
+  // login and even after pressing X.
   useEffect(() => {
-    const onPop = () => { const p = window.location.pathname.toLowerCase(); if (p === '/' || p === '') { setActiveRole('customer'); setVerifiedStaffRole(null); } };
+    const onPop = () => {
+      const p = window.location.pathname.toLowerCase();
+      if (p === '/' || p === '') {
+        setActiveRole('customer');
+        setVerifiedStaffRole(null);
+      }
+    };
     window.addEventListener('popstate', onPop);
     const path = window.location.pathname.toLowerCase();
     const hash = window.location.hash.toLowerCase();
     const search = window.location.search.toLowerCase();
-    if (path.includes('/admin') || hash.includes('admin') || search.includes('role=admin')) { setActiveRole('customer'); openStaffLogin('admin'); }
-    else if (path.includes('/manager') || hash.includes('manager') || search.includes('role=manager')) { setActiveRole('customer'); openStaffLogin('manager'); }
-    else if (path.includes('/chef') || hash.includes('chef') || search.includes('role=chef')) { setActiveRole('customer'); openStaffLogin('chef'); }
+    if (path.includes('/admin') || hash.includes('admin') || search.includes('role=admin')) {
+      setActiveRole('customer');
+      openStaffLogin('admin');
+    } else if (path.includes('/manager') || hash.includes('manager') || search.includes('role=manager')) {
+      setActiveRole('customer');
+      openStaffLogin('manager');
+    } else if (path.includes('/chef') || hash.includes('chef') || search.includes('role=chef')) {
+      setActiveRole('customer');
+      openStaffLogin('chef');
+    }
     return () => window.removeEventListener('popstate', onPop);
-  }, [setActiveRole, openStaffLogin]);
+    // This is intentionally mount-only: the URL route should not reopen the
+    // authentication modal after login or after the user closes it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (activeRole !== 'customer' && verifiedStaffRole !== activeRole) openStaffLogin(activeRole);
