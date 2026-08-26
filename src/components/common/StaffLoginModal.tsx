@@ -1,16 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { isSupabaseConfigured, signIn, signOut, supabaseRpc } from '../../cms/supabaseRest';
+import { isSupabaseConfigured, signInWithStaffPin } from '../../cms/supabaseRest';
 import { ShieldAlert, Briefcase, ChefHat, Lock, X, CheckCircle2, AlertCircle, ShieldCheck, ArrowRight } from 'lucide-react';
 
 type StaffRole = 'admin' | 'manager' | 'chef';
-type AdminAccount = { user_id: string; email: string; role_id: StaffRole; active: boolean };
-
-const STAFF_EMAILS: Record<StaffRole, string> = {
-  admin: 'admin@bringmybite.com',
-  manager: 'manager@bringmybite.com',
-  chef: 'chef@bringmybite.com'
-};
 
 export const StaffLoginModal: React.FC = () => {
   const { isStaffLoginOpen, setIsStaffLoginOpen, targetStaffRole, setTargetStaffRole, setActiveRole } = useApp();
@@ -62,28 +55,13 @@ export const StaffLoginModal: React.FC = () => {
 
     setBusy(true);
     try {
-      // The PIN is the Supabase Auth password. The email is fixed by the selected staff role,
-      // so family operators only need to choose their role and enter their PIN.
-      await signIn(STAFF_EMAILS[selectedRole], cleanPin);
-      const rows = await supabaseRpc<AdminAccount>('bmb_get_staff_account');
-      const account = rows[0];
-
-      if (!account?.active) {
-        await signOut();
-        throw new Error('This staff account is inactive. Contact an administrator.');
-      }
-      if (account.role_id !== selectedRole) {
-        await signOut();
-        throw new Error(`This account is assigned to ${account.role_id}.`);
-      }
-
+      const session = await signInWithStaffPin(selectedRole, cleanPin);
+      if (session.role !== selectedRole) throw new Error('Invalid credentials.');
       setActiveRole(selectedRole);
       setSuccessMsg('Login successful.');
       window.dispatchEvent(new CustomEvent('bmb:staff-authenticated', {
-        detail: { role: selectedRole, userId: account.user_id, email: account.email }
+        detail: { role: selectedRole, userId: session.id }
       }));
-
-      // Close immediately after success; no timer/race with route effects.
       setIsStaffLoginOpen(false);
       setTargetStaffRole(null);
       setPin('');
@@ -110,7 +88,6 @@ export const StaffLoginModal: React.FC = () => {
           </div>
           <button type="button" aria-label="Close staff login" onClick={closeLogin} className="p-2 rounded-xl text-emerald-300 hover:text-white"><X className="w-5 h-5" /></button>
         </div>
-
         <div className="p-4 grid grid-cols-3 gap-2 border-b border-gray-200">
           {(['admin', 'manager', 'chef'] as StaffRole[]).map(role => (
             <button key={role} type="button" onClick={() => chooseRole(role)} className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 ${selectedRole === role ? 'bg-[#124E33] text-white border-[#124E33]' : 'bg-white text-gray-700 border-gray-300'}`}>
@@ -118,38 +95,21 @@ export const StaffLoginModal: React.FC = () => {
             </button>
           ))}
         </div>
-
         <form onSubmit={handleLogin} className="p-5 space-y-4">
           <div className="p-3.5 bg-white rounded-2xl border border-gray-200">
             <div className="flex items-center gap-2 font-bold text-sm text-gray-900">{roleMeta[selectedRole].icon}{roleMeta[selectedRole].title}</div>
             <p className="text-xs text-gray-600 mt-1">{roleMeta[selectedRole].description}</p>
           </div>
-
           <label className="block text-xs font-bold text-gray-700">
             Staff PIN
-            <input
-              className="w-full mt-1.5 px-4 py-4 bg-white border border-gray-300 rounded-xl text-center text-2xl tracking-[0.45em] font-mono outline-none focus:ring-2 focus:ring-[#124E33]"
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={8}
-              autoComplete="current-password"
-              placeholder="••••"
-              value={pin}
-              onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
-              autoFocus
-            />
+            <input className="w-full mt-1.5 px-4 py-4 bg-white border border-gray-300 rounded-xl text-center text-2xl tracking-[0.45em] font-mono outline-none focus:ring-2 focus:ring-[#124E33]" type="password" inputMode="numeric" pattern="[0-9]*" maxLength={8} autoComplete="current-password" placeholder="••••" value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))} autoFocus />
           </label>
-
           {errorMsg && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" />{errorMsg}</div>}
           {successMsg && <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 shrink-0" />{successMsg}</div>}
-
           <button disabled={busy} type="submit" className="w-full py-3.5 bg-[#124E33] disabled:opacity-60 text-white font-bold text-sm rounded-xl shadow-lg flex items-center justify-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[#F2C94C]" />
-            <span>{busy ? 'Signing in…' : `Enter ${roleMeta[selectedRole].title}`}</span>
-            <ArrowRight className="w-4 h-4" />
+            <ShieldCheck className="w-4 h-4 text-[#F2C94C]" /><span>{busy ? 'Signing in…' : `Enter ${roleMeta[selectedRole].title}`}</span><ArrowRight className="w-4 h-4" />
           </button>
-          <p className="text-[11px] text-gray-400 text-center">Simple PIN login. Your PIN is checked by Supabase Auth.</p>
+          <p className="text-[11px] text-gray-400 text-center">PIN is verified server-side. No staff email is shown or entered here.</p>
         </form>
       </div>
     </div>
