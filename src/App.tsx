@@ -34,7 +34,14 @@ type StaffRole = 'admin' | 'manager' | 'chef';
 type StaffAccount = { user_id: string; email: string; role_id: StaffRole; active: boolean };
 
 const LockedDAdminNotice: React.FC = () => (
-  <div className="min-h-screen bg-[#F6F3EC] flex items-center justify-center p-5"><div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-7 text-center space-y-3"><div className="text-[10px] uppercase tracking-[0.22em] text-amber-600 font-black">D-ADMIN DESIGNER</div><h1 className="text-2xl font-black text-[#124E33]">D-Admin is locked</h1><p className="text-sm text-gray-600">Supabase authentication is required before the admin control centre can be opened.</p><button onClick={() => window.location.assign('/')} className="mt-2 px-4 py-2.5 rounded-xl bg-[#124E33] text-white font-bold">Return to Website</button></div></div>
+  <div className="min-h-screen bg-[#F6F3EC] flex items-center justify-center p-5">
+    <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-7 text-center space-y-3">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-amber-600 font-black">D-ADMIN DESIGNER</div>
+      <h1 className="text-2xl font-black text-[#124E33]">D-Admin is locked</h1>
+      <p className="text-sm text-gray-600">Supabase authentication is required before the admin control centre can be opened.</p>
+      <button onClick={() => window.location.assign('/')} className="mt-2 px-4 py-2.5 rounded-xl bg-[#124E33] text-white font-bold">Return to Website</button>
+    </div>
+  </div>
 );
 
 const getStaffRouteRole = (): StaffRole | null => {
@@ -51,55 +58,92 @@ const MainContent: React.FC = () => {
   const { activeRole, setActiveRole, openStaffLogin } = useApp();
   const [verifiedStaffRole, setVerifiedStaffRole] = useState<StaffRole | null>(null);
   const authEventRef = React.useRef(false);
+  const modalDismissedRef = React.useRef(false);
 
+  // A successful login is authoritative for this mounted app. This prevents
+  // the initial route-check from racing the login modal and reopening it.
   useEffect(() => {
     const onAuth = (event: Event) => {
       const role = (event as CustomEvent<{ role?: StaffRole }>).detail?.role;
       if (role === 'admin' || role === 'manager' || role === 'chef') {
         authEventRef.current = true;
+        modalDismissedRef.current = false;
         setVerifiedStaffRole(role);
         setActiveRole(role);
       }
     };
+
+    const onDismiss = () => {
+      // Treat an explicit X/Cancel as intentional for this mounted route.
+      // A refresh will perform authentication again.
+      modalDismissedRef.current = true;
+      authEventRef.current = true;
+      setVerifiedStaffRole(null);
+      setActiveRole('customer');
+    };
+
+    const onLogout = () => {
+      authEventRef.current = true;
+      modalDismissedRef.current = false;
+      setVerifiedStaffRole(null);
+      setActiveRole('customer');
+    };
+
     window.addEventListener('bmb:staff-authenticated', onAuth);
-    return () => window.removeEventListener('bmb:staff-authenticated', onAuth);
+    window.addEventListener('bmb:staff-login-dismissed', onDismiss);
+    window.addEventListener('bmb:staff-logout', onLogout);
+
+    return () => {
+      window.removeEventListener('bmb:staff-authenticated', onAuth);
+      window.removeEventListener('bmb:staff-login-dismissed', onDismiss);
+      window.removeEventListener('bmb:staff-logout', onLogout);
+    };
   }, [setActiveRole]);
 
   useEffect(() => {
     let cancelled = false;
+
     const restoreOrRequestStaffAuth = async () => {
       const requestedRole = getStaffRouteRole();
-      if (!requestedRole) return;
+      if (!requestedRole || modalDismissedRef.current) return;
+
       if (!isSupabaseConfigured) {
         if (!cancelled && !authEventRef.current) openStaffLogin(requestedRole);
         return;
       }
+
       try {
         const auth = await getCurrentUser();
-        if (cancelled || authEventRef.current) return;
+        if (cancelled || authEventRef.current || modalDismissedRef.current) return;
+
         if (auth?.id) {
           const rows = await supabaseRpc<StaffAccount>('bmb_get_staff_account');
           const account = rows[0];
+
           if (account?.active && ['admin', 'manager', 'chef'].includes(account.role_id)) {
             if (!cancelled) {
+              authEventRef.current = true;
               setVerifiedStaffRole(account.role_id);
               setActiveRole(account.role_id);
             }
             return;
           }
-          signOut();
+
+          await signOut();
         }
-        if (!cancelled && !authEventRef.current) {
+
+        if (!cancelled && !authEventRef.current && !modalDismissedRef.current) {
           setActiveRole('customer');
           openStaffLogin(requestedRole);
         }
       } catch {
-        if (!cancelled && !authEventRef.current) {
+        if (!cancelled && !authEventRef.current && !modalDismissedRef.current) {
           setActiveRole('customer');
           openStaffLogin(requestedRole);
         }
       }
     };
+
     void restoreOrRequestStaffAuth();
     return () => { cancelled = true; };
   }, []);
@@ -109,10 +153,12 @@ const MainContent: React.FC = () => {
       const path = window.location.pathname.toLowerCase();
       if (path === '/' || path === '') {
         authEventRef.current = false;
+        modalDismissedRef.current = false;
         setActiveRole('customer');
         setVerifiedStaffRole(null);
       }
     };
+
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, [setActiveRole]);
@@ -121,7 +167,54 @@ const MainContent: React.FC = () => {
   if (dAdminPath) return isSupabaseConfigured ? <DAdminGuard><DAdminDesigner /></DAdminGuard> : <LockedDAdminNotice />;
 
   const effectiveRole = activeRole !== 'customer' && verifiedStaffRole === activeRole ? activeRole : 'customer';
-  return <MobileAppFrame><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar /><Header /><TodayMenuTicker />{effectiveRole !== 'customer' && <StaffNavBar />}<main className="flex-1">{effectiveRole === 'customer' && <><ExpiryReminderBanner /><OrderStatusNotifier /><HeroBanner /><PackagesSection /><LowerFeaturesGrid /></>}{effectiveRole === 'admin' && <AdminPanel />}{effectiveRole === 'manager' && <ManagerPanel />}{effectiveRole === 'chef' && <ChefPanel />}</main>{(effectiveRole === 'manager' || effectiveRole === 'chef') && <CalculatorWidget />}<Footer />{effectiveRole === 'customer' && <ChatBox />}<WeeklyMenuModal /><RegistrationModal /><InstantOrderModal /><ReferralModal /><BonusOffersModal /><RenewalModal /><ReminderPreviewModal /><NativeAppDownloadModal /><StaffLoginModal /></div></MobileAppFrame>;
+
+  return (
+    <MobileAppFrame>
+      <div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans">
+        <TopBar />
+        <Header />
+        <TodayMenuTicker />
+        {effectiveRole !== 'customer' && <StaffNavBar />}
+
+        <main className="flex-1">
+          {effectiveRole === 'customer' && (
+            <>
+              <ExpiryReminderBanner />
+              <OrderStatusNotifier />
+              <HeroBanner />
+              <PackagesSection />
+              <LowerFeaturesGrid />
+            </>
+          )}
+          {effectiveRole === 'admin' && <AdminPanel />}
+          {effectiveRole === 'manager' && <ManagerPanel />}
+          {effectiveRole === 'chef' && <ChefPanel />}
+        </main>
+
+        {(effectiveRole === 'manager' || effectiveRole === 'chef') && <CalculatorWidget />}
+        <Footer />
+        {effectiveRole === 'customer' && <ChatBox />}
+
+        <WeeklyMenuModal />
+        <RegistrationModal />
+        <InstantOrderModal />
+        <ReferralModal />
+        <BonusOffersModal />
+        <RenewalModal />
+        <ReminderPreviewModal />
+        <NativeAppDownloadModal />
+        {effectiveRole === 'customer' && <StaffLoginModal />}
+      </div>
+    </MobileAppFrame>
+  );
 };
 
-export default function App() { return <CmsProvider><AppProvider><MainContent /></AppProvider></CmsProvider>; }
+export default function App() {
+  return (
+    <CmsProvider>
+      <AppProvider>
+        <MainContent />
+      </AppProvider>
+    </CmsProvider>
+  );
+}
