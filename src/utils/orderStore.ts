@@ -1,7 +1,7 @@
 import { isSupabaseConfigured, supabaseSelect, supabaseInsert, supabasePatch, supabaseRpc } from '../cms/supabaseRest';
 
 export type StoredOrderKind = 'instant' | 'subscription';
-export type StoredOrderStatus = 'Pending Verification' | 'Approved' | 'Preparing' | 'Dispatched' | 'Delivered' | 'Declined';
+export type StoredOrderStatus = 'Pending Verification' | 'Confirmed' | 'Preparing' | 'Dispatched' | 'Delivered' | 'Cancelled' | 'Rejected';
 
 export interface StoredOrder {
   id: string;
@@ -13,7 +13,7 @@ export interface StoredOrder {
   amount: number;
   utrNumber: string;
   paymentSlip?: string;
-  paymentStatus: 'Pending Verification' | 'Verified' | 'Rejected';
+  paymentStatus: 'Pending Verification' | 'Verified' | 'Rejected' | 'Failed';
   status: StoredOrderStatus;
   details?: string;
   createdAt: string;
@@ -29,11 +29,10 @@ function writeLocal(rows: StoredOrder[]) { localStorage.setItem(KEY, JSON.string
 
 export async function addStoredOrder(order: StoredOrder): Promise<StoredOrder> {
   if (isSupabaseConfigured) {
-    try {
-      await supabaseInsert('bmb_orders', toDb(order) as any);
-    } catch (e) {
-      console.warn('Supabase order insert failed; keeping a local copy.', e);
-    }
+    await supabaseInsert('bmb_orders', toDb(order) as any);
+    const next = [order, ...readLocal().filter(x => x.id !== order.id)];
+    writeLocal(next);
+    return order;
   }
   const next = [order, ...readLocal().filter(x => x.id !== order.id)];
   writeLocal(next);
@@ -42,22 +41,19 @@ export async function addStoredOrder(order: StoredOrder): Promise<StoredOrder> {
 
 export async function getStoredOrders(): Promise<StoredOrder[]> {
   if (isSupabaseConfigured) {
-    try {
-      const rows = await supabaseSelect<StoredOrder>('bmb_orders', 'select=*&order=created_at.desc');
-      if (rows.length) return rows.map(normalizeRow);
-    } catch (e) { console.warn('Supabase order fetch failed; using local orders.', e); }
+    const rows = await supabaseSelect<any>('bmb_orders', 'select=*&order=created_at.desc');
+    return rows.map(normalizeRow);
   }
   return readLocal();
 }
 
 export async function updateStoredOrder(id: string, patch: Partial<StoredOrder>): Promise<void> {
   if (isSupabaseConfigured) {
-    try { await supabasePatch('bmb_orders', `id=eq.${encodeURIComponent(id)}`, toDbPatch(patch) as any); } catch (e) { console.warn('Supabase order update failed; local copy updated.', e); }
+    await supabasePatch('bmb_orders', `id=eq.${encodeURIComponent(id)}`, toDbPatch(patch) as any);
   }
   const rows = readLocal().map(o => o.id === id ? { ...o, ...patch, updatedAt: new Date().toISOString() } : o);
   writeLocal(rows);
 }
-
 
 function toDb(order: StoredOrder) {
   return { id: order.id, kind: order.kind, customer_name: order.customerName, phone: order.phone, whatsapp: order.whatsapp || '', plan_or_meal: order.planOrMeal, amount: order.amount, utr_number: order.utrNumber, payment_slip: order.paymentSlip || null, payment_status: order.paymentStatus, status: order.status, details: order.details || '', created_at: order.createdAt, updated_at: order.updatedAt };
@@ -89,7 +85,6 @@ function normalizeRow(row: any): StoredOrder {
     updatedAt: row.updated_at ?? row.updatedAt ?? new Date().toISOString()
   };
 }
-
 
 const TRACKING_KEY = 'bmb_last_order_tracking_v1';
 export function saveLastOrderTracking(order: Pick<StoredOrder, 'id' | 'phone'>) {
