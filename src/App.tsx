@@ -28,7 +28,7 @@ import { DAdminDesigner } from './components/panels/DAdminDesigner';
 import { DAdminGuard } from './components/panels/DAdminGuard';
 import { CalculatorWidget } from './components/common/CalculatorWidget';
 import { CmsProvider } from './cms/CmsContext';
-import { getCurrentUser, isSupabaseConfigured, signOut, supabaseSelect } from './cms/supabaseRest';
+import { getCurrentUser, isSupabaseConfigured, signOut, supabaseRpc } from './cms/supabaseRest';
 
 type StaffRole = 'admin' | 'manager' | 'chef';
 type StaffAccount = { user_id: string; email: string; role_id: StaffRole; active: boolean };
@@ -57,15 +57,17 @@ const MainContent: React.FC = () => {
       try {
         const auth = await getCurrentUser();
         if (!auth?.id || cancelled) return;
-        const rows = await supabaseSelect<StaffAccount>(
-          'bmb_admin_users',
-          `select=user_id,email,role_id,active&user_id=eq.${encodeURIComponent(auth.id)}&limit=1`
-        );
+
+        // Use the SECURITY DEFINER RPC instead of a direct browser GET
+        // against bmb_admin_users, which is protected by RLS.
+        const rows = await supabaseRpc<StaffAccount>('bmb_get_staff_account');
         const account = rows[0];
+
         if (!account?.active || !['admin', 'manager', 'chef'].includes(account.role_id)) {
           signOut();
           return;
         }
+
         if (!cancelled) {
           setVerifiedStaffRole(account.role_id);
           setActiveRole(account.role_id);
