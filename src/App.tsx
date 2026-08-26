@@ -70,4 +70,4 @@ const MainContent:React.FC=()=>{
   return <MobileAppFrame><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><TodayMenuTicker/>{effective!=='customer'&&<StaffNavBar/>}<main className="flex-1">{effective==='customer'&&<><ExpiryReminderBanner/><OrderStatusNotifier/><HeroBanner/><PackagesSection/><LowerFeaturesGrid/></>}{effective==='admin'&&<AdminPanel/>}{effective==='manager'&&<ManagerPanel/>}{effective==='chef'&&<ChefPanel/>}</main>{(effective==='manager'||effective==='chef')&&<CalculatorWidget/>}<Footer/>{effective==='customer'&&<ChatBox/>}<WeeklyMenuModal/><RegistrationModal/><InstantOrderModal/><ReferralModal/><BonusOffersModal/><RenewalModal/><ReminderPreviewModal/><NativeAppDownloadModal/>{effective==='customer'&&rr&&rr!=='d_admin'&&<StaffLoginModal/>}</div></MobileAppFrame>;
 };
 
-export default function App(){return <CmsProvider><AppProvider><MainContent/></AppProvider></CmsProvider>;
+export default function App(){return <CmsProvider><AppProvider><MainContent/></AppProvider></CmsProvider>;}
