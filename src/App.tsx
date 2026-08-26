@@ -50,11 +50,13 @@ const getStaffRouteRole = (): StaffRole | null => {
 const MainContent: React.FC = () => {
   const { activeRole, setActiveRole, openStaffLogin } = useApp();
   const [verifiedStaffRole, setVerifiedStaffRole] = useState<StaffRole | null>(null);
+  const authEventRef = React.useRef(false);
 
   useEffect(() => {
     const onAuth = (event: Event) => {
       const role = (event as CustomEvent<{ role?: StaffRole }>).detail?.role;
       if (role === 'admin' || role === 'manager' || role === 'chef') {
+        authEventRef.current = true;
         setVerifiedStaffRole(role);
         setActiveRole(role);
       }
@@ -63,29 +65,21 @@ const MainContent: React.FC = () => {
     return () => window.removeEventListener('bmb:staff-authenticated', onAuth);
   }, [setActiveRole]);
 
-  // Restore an existing Supabase staff session. If the current URL requests a
-  // staff panel and no valid session exists, open the login modal once on the
-  // initial page load. The URL is deliberately NOT a reactive modal trigger:
-  // closing the modal must remain closed until the user explicitly opens login.
   useEffect(() => {
     let cancelled = false;
-
     const restoreOrRequestStaffAuth = async () => {
       const requestedRole = getStaffRouteRole();
-
+      if (!requestedRole) return;
       if (!isSupabaseConfigured) {
-        if (requestedRole && !cancelled) openStaffLogin(requestedRole);
+        if (!cancelled && !authEventRef.current) openStaffLogin(requestedRole);
         return;
       }
-
       try {
         const auth = await getCurrentUser();
-        if (cancelled) return;
-
+        if (cancelled || authEventRef.current) return;
         if (auth?.id) {
           const rows = await supabaseRpc<StaffAccount>('bmb_get_staff_account');
           const account = rows[0];
-
           if (account?.active && ['admin', 'manager', 'chef'].includes(account.role_id)) {
             if (!cancelled) {
               setVerifiedStaffRole(account.role_id);
@@ -93,34 +87,28 @@ const MainContent: React.FC = () => {
             }
             return;
           }
-
           signOut();
         }
-
-        if (requestedRole && !cancelled) {
+        if (!cancelled && !authEventRef.current) {
           setActiveRole('customer');
           openStaffLogin(requestedRole);
         }
       } catch {
-        if (!cancelled && requestedRole) {
+        if (!cancelled && !authEventRef.current) {
           setActiveRole('customer');
           openStaffLogin(requestedRole);
         }
       }
     };
-
     void restoreOrRequestStaffAuth();
     return () => { cancelled = true; };
-    // Intentionally mount-only. openStaffLogin is a freshly-created context
-    // function; making this effect reactive to it causes the exact modal loop
-    // this authentication flow must avoid.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const onPop = () => {
       const path = window.location.pathname.toLowerCase();
       if (path === '/' || path === '') {
+        authEventRef.current = false;
         setActiveRole('customer');
         setVerifiedStaffRole(null);
       }
@@ -132,10 +120,7 @@ const MainContent: React.FC = () => {
   const dAdminPath = window.location.pathname.toLowerCase().startsWith('/d-admin') || window.location.hash.toLowerCase() === '#d-admin' || window.location.hash.toLowerCase() === '#superadmin';
   if (dAdminPath) return isSupabaseConfigured ? <DAdminGuard><DAdminDesigner /></DAdminGuard> : <LockedDAdminNotice />;
 
-  // Staff role is rendered only after explicit verification. There is no
-  // reactive guard that can reopen the login modal when activeRole changes.
   const effectiveRole = activeRole !== 'customer' && verifiedStaffRole === activeRole ? activeRole : 'customer';
-
   return <MobileAppFrame><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar /><Header /><TodayMenuTicker />{effectiveRole !== 'customer' && <StaffNavBar />}<main className="flex-1">{effectiveRole === 'customer' && <><ExpiryReminderBanner /><OrderStatusNotifier /><HeroBanner /><PackagesSection /><LowerFeaturesGrid /></>}{effectiveRole === 'admin' && <AdminPanel />}{effectiveRole === 'manager' && <ManagerPanel />}{effectiveRole === 'chef' && <ChefPanel />}</main>{(effectiveRole === 'manager' || effectiveRole === 'chef') && <CalculatorWidget />}<Footer />{effectiveRole === 'customer' && <ChatBox />}<WeeklyMenuModal /><RegistrationModal /><InstantOrderModal /><ReferralModal /><BonusOffersModal /><RenewalModal /><ReminderPreviewModal /><NativeAppDownloadModal /><StaffLoginModal /></div></MobileAppFrame>;
 };
 
