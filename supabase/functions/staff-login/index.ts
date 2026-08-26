@@ -6,13 +6,10 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
-const SECRET_KEYS = Deno.env.get('SUPABASE_SECRET_KEYS') || '';
-const SUPABASE_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SECRET_KEY') || (() => {
-  try { return JSON.parse(SECRET_KEYS)?.default || ''; } catch { return ''; }
-})();
-const SUPABASE_PUBLIC = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || (() => {
-  try { return JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || '')?.default || ''; } catch { return ''; }
-})();
+const secretKeys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}');
+const publishableKeys = JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || '{}');
+const SUPABASE_SECRET = secretKeys.default || Deno.env.get('SUPABASE_SECRET_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const SUPABASE_PUBLIC = publishableKeys.default || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || '';
 
 const PIN_HASHES: Record<string, string> = {
   admin: 'c8df28b3943286680cb05b318ffd17aa0a0e963f091fd007a6ad421485b71799',
@@ -43,7 +40,7 @@ Deno.serve(async (req) => {
   if (await sha256(pin) !== PIN_HASHES[role]) return json({ error: 'Invalid credentials.' }, 401);
 
   const lookup = await fetch(`${SUPABASE_URL}/rest/v1/bmb_admin_users?select=user_id,email,role_id,active&role_id=eq.${encodeURIComponent(role)}&active=eq.true&limit=1`, {
-    headers: { apikey: SUPABASE_SECRET, Authorization: `Bearer ${SUPABASE_SECRET}` },
+    headers: { apikey: SUPABASE_SECRET },
   });
   if (!lookup.ok) return json({ error: 'Authentication service error.' }, 500);
   const accounts = await lookup.json();
@@ -52,7 +49,7 @@ Deno.serve(async (req) => {
 
   const update = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${account.user_id}`, {
     method: 'PUT',
-    headers: { apikey: SUPABASE_SECRET, Authorization: `Bearer ${SUPABASE_SECRET}`, 'Content-Type': 'application/json' },
+    headers: { apikey: SUPABASE_SECRET, 'Content-Type': 'application/json' },
     body: JSON.stringify({ password: pin, email_confirm: true }),
   });
   if (!update.ok) return json({ error: 'Authentication service error.' }, 500);
