@@ -64,9 +64,9 @@ const MainContent: React.FC = () => {
   }, [setActiveRole]);
 
   // Restore an existing Supabase staff session. If the current URL requests a
-  // staff panel and no valid session exists, open the login modal exactly once.
-  // The URL itself is NOT treated as a persistent modal trigger after login or
-  // after the user closes the modal; this prevents the reopen loop.
+  // staff panel and no valid session exists, open the login modal once on the
+  // initial page load. The URL is deliberately NOT a reactive modal trigger:
+  // closing the modal must remain closed until the user explicitly opens login.
   useEffect(() => {
     let cancelled = false;
 
@@ -111,7 +111,11 @@ const MainContent: React.FC = () => {
 
     void restoreOrRequestStaffAuth();
     return () => { cancelled = true; };
-  }, [setActiveRole, openStaffLogin]);
+    // Intentionally mount-only. openStaffLogin is a freshly-created context
+    // function; making this effect reactive to it causes the exact modal loop
+    // this authentication flow must avoid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const onPop = () => {
@@ -129,7 +133,7 @@ const MainContent: React.FC = () => {
   if (dAdminPath) return isSupabaseConfigured ? <DAdminGuard><DAdminDesigner /></DAdminGuard> : <LockedDAdminNotice />;
 
   // Staff role is rendered only after explicit verification. There is no
-  // second effect here that can reopen the login modal when activeRole changes.
+  // reactive guard that can reopen the login modal when activeRole changes.
   const effectiveRole = activeRole !== 'customer' && verifiedStaffRole === activeRole ? activeRole : 'customer';
 
   return <MobileAppFrame><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar /><Header /><TodayMenuTicker />{effectiveRole !== 'customer' && <StaffNavBar />}<main className="flex-1">{effectiveRole === 'customer' && <><ExpiryReminderBanner /><OrderStatusNotifier /><HeroBanner /><PackagesSection /><LowerFeaturesGrid /></>}{effectiveRole === 'admin' && <AdminPanel />}{effectiveRole === 'manager' && <ManagerPanel />}{effectiveRole === 'chef' && <ChefPanel />}</main>{(effectiveRole === 'manager' || effectiveRole === 'chef') && <CalculatorWidget />}<Footer />{effectiveRole === 'customer' && <ChatBox />}<WeeklyMenuModal /><RegistrationModal /><InstantOrderModal /><ReferralModal /><BonusOffersModal /><RenewalModal /><ReminderPreviewModal /><NativeAppDownloadModal /><StaffLoginModal /></div></MobileAppFrame>;
