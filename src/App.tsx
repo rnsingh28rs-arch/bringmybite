@@ -31,7 +31,7 @@ import { CmsProvider } from './cms/CmsContext';
 import { getCurrentUser, isSupabaseConfigured, signOut, supabaseRpc } from './cms/supabaseRest';
 
 type StaffRole='d_admin'|'admin'|'manager'|'chef';
-type StaffAccount={user_id:string;email:string;role_id:string;active:boolean};
+type StaffAccount={user_id:string;username:string;email:string;role_id:string;active:boolean};
 const routeRole=():StaffRole|null=>{const p=window.location.pathname.toLowerCase();if(p==='/d-admin'||p.startsWith('/d-admin/'))return'd_admin';if(p==='/admin'||p.startsWith('/admin/'))return'admin';if(p==='/manager'||p.startsWith('/manager/'))return'manager';if(p==='/chef'||p.startsWith('/chef/'))return'chef';return null;};
 
 const MainContent:React.FC=()=>{
@@ -70,4 +70,4 @@ const MainContent:React.FC=()=>{
   return <MobileAppFrame><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><TodayMenuTicker/>{effective!=='customer'&&<StaffNavBar/>}<main className="flex-1">{effective==='customer'&&<><ExpiryReminderBanner/><OrderStatusNotifier/><HeroBanner/><PackagesSection/><LowerFeaturesGrid/></>}{effective==='admin'&&<AdminPanel/>}{effective==='manager'&&<ManagerPanel/>}{effective==='chef'&&<ChefPanel/>}</main>{(effective==='manager'||effective==='chef')&&<CalculatorWidget/>}<Footer/>{effective==='customer'&&<ChatBox/>}<WeeklyMenuModal/><RegistrationModal/><InstantOrderModal/><ReferralModal/><BonusOffersModal/><RenewalModal/><ReminderPreviewModal/><NativeAppDownloadModal/>{effective==='customer'&&rr&&rr!=='d_admin'&&<StaffLoginModal/>}</div></MobileAppFrame>;
 };
 
-export default function App(){return <CmsProvider><AppProvider><MainContent/></AppProvider></CmsProvider>;}
+export default function App(){return <CmsProvider><AppProvider><MainContent/></AppProvider></CmsProvider>;
