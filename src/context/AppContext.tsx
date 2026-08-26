@@ -9,7 +9,7 @@ import {
   INITIAL_REFERRALS, BONUS_OFFERS
 } from '../data/initialData';
 import { useCms } from '../cms/CmsContext';
-import { isSupabaseConfigured, restoreSession, signInWithStaffPin, signOut as supabaseSignOut } from '../cms/supabaseRest';
+import { isSupabaseConfigured, restoreSession, signInWithStaffCredentials, signOut as supabaseSignOut } from '../cms/supabaseRest';
 
 export interface PlanPricing { vegMonthly:number; eggMonthly:number; nonVegMonthly:number; vegThaliInstant:number; eggThaliInstant:number; nonVegThaliInstant:number; }
 export const calculateExpiryDate=(startDate:string,duration:string):string=>{const start=new Date(startDate||new Date().toISOString().split('T')[0]);const months=duration==='3 Months'?3:duration==='6 Months'?6:1;const end=new Date(start);end.setMonth(end.getMonth()+months);return end.toISOString().split('T')[0];};
@@ -71,9 +71,10 @@ export const AppProvider:React.FC<{children:React.ReactNode}>=({children})=>{
     if(!isSupabaseConfigured) return false;
     const cleanPin=pin.trim();
     if(!/^\d{6}$/.test(cleanPin)) return false;
+    const username=role;
     try{
       restoreSession();
-      const session=await signInWithStaffPin(role,cleanPin);
+      const session=await signInWithStaffCredentials(username,cleanPin);
       if(session.role!==role) return false;
       const updated={...authenticatedRoles,[role]:true};
       setAuthenticatedRoles(updated);
@@ -81,7 +82,7 @@ export const AppProvider:React.FC<{children:React.ReactNode}>=({children})=>{
       setIsStaffLoginOpen(false);
       setTargetStaffRole(null);
       localStorage.setItem('bmb_staff_auth_roles',JSON.stringify(updated));
-      window.dispatchEvent(new CustomEvent('bmb:staff-authenticated',{detail:{role,userId:session.id}}));
+      window.dispatchEvent(new CustomEvent('bmb:staff-authenticated',{detail:{role,userId:session.id,username:session.username}}));
       return true;
     }catch{return false;}
   };
