@@ -91,6 +91,8 @@ const MainContent: React.FC = () => {
     };
   }, [setActiveRole]);
 
+  // Run once for the current URL. Do not depend on openStaffLogin: AppContext creates
+  // that callback during render, and depending on it would recreate the modal loop.
   useEffect(() => {
     let cancelled = false;
     const restoreOrRequestStaffAuth = async () => {
@@ -128,7 +130,9 @@ const MainContent: React.FC = () => {
     };
     void restoreOrRequestStaffAuth();
     return () => { cancelled = true; };
-  }, [routeRole, openStaffLogin, setActiveRole]);
+    // Intentionally mount-only: route changes use full navigation via window.location.assign.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!routeRole || !verifiedStaffRole || verifiedStaffRole === routeRole) return;
