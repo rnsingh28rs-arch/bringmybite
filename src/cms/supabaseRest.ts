@@ -11,21 +11,19 @@ export interface AuthUser { id:string; email?:string; access_token:string; refre
 const jsonHeaders=()=>({'Content-Type':'application/json',apikey:config.anonKey});
 const authHeaders=()=>({...jsonHeaders(),Authorization:`Bearer ${accessToken||config.anonKey}`});
 
-export async function signIn(email:string,password:string):Promise<AuthUser>{
-  if(!isSupabaseConfigured) throw new Error('Supabase is not configured.');
-  const response=await fetch(`${config.url}/auth/v1/token?grant_type=password`,{method:'POST',headers:jsonHeaders(),body:JSON.stringify({email,password})});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok||!data.access_token||!data.user) throw new Error(data?.msg||data?.message||'Login failed.');
-  accessToken=data.access_token; refreshToken=data.refresh_token||'';
-  localStorage.setItem('bmb_supabase_access_token',accessToken); localStorage.setItem('bmb_supabase_refresh_token',refreshToken);
-  return{id:data.user.id,email:data.user.email,access_token:accessToken,refresh_token:refreshToken};
-}
-
+/**
+ * Staff authentication has a single supported entry point: the staff-login
+ * Edge Function. The browser never authenticates staff directly with email
+ * and password; the PIN remains the staff credential and the Edge Function
+ * is responsible for the server-side Auth session exchange.
+ */
 export async function signInWithStaffPin(role:'admin'|'manager'|'chef'|'d_admin',pin:string):Promise<AuthUser & {role:string}>{
   if(!isSupabaseConfigured) throw new Error('Supabase authentication is not configured.');
-  const response=await fetch(`${config.url}/functions/v1/staff-login`,{method:'POST',headers:jsonHeaders(),body:JSON.stringify({role,pin:pin.trim()})});
+  const cleanPin=pin.trim();
+  if(!/^\d{6}$/.test(cleanPin)) throw new Error('Enter the configured 6-digit staff PIN.');
+  const response=await fetch(`${config.url}/functions/v1/staff-login`,{method:'POST',headers:jsonHeaders(),body:JSON.stringify({role,pin:cleanPin})});
   const data=await response.json().catch(()=>({}));
-  if(!response.ok) throw new Error(data?.error||`Authentication failed (${response.status}).`);
+  if(!response.ok) throw new Error(data?.error||'Authentication failed.');
   if(!data.access_token||!data.refresh_token||!data.user_id||!data.role) throw new Error('Authentication returned an incomplete session.');
   accessToken=data.access_token; refreshToken=data.refresh_token;
   localStorage.setItem('bmb_supabase_access_token',accessToken); localStorage.setItem('bmb_supabase_refresh_token',refreshToken);
