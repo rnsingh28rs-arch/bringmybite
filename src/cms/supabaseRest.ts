@@ -11,23 +11,20 @@ export interface AuthUser { id:string; email?:string; access_token:string; refre
 const jsonHeaders=()=>({'Content-Type':'application/json',apikey:config.anonKey});
 const authHeaders=()=>({...jsonHeaders(),Authorization:`Bearer ${accessToken||config.anonKey}`});
 
-/**
- * Staff authentication has a single supported entry point: the staff-login
- * Edge Function. The browser never authenticates staff directly with email
- * and password; the PIN remains the staff credential and the Edge Function
- * is responsible for the server-side Auth session exchange.
- */
-export async function signInWithStaffPin(role:'admin'|'manager'|'chef'|'d_admin',pin:string):Promise<AuthUser & {role:string}>{
+/** Single staff authentication entry point: username + 6-digit PIN. */
+export async function signInWithStaffCredentials(username:string,pin:string):Promise<AuthUser & {role:string;username:string}>{
   if(!isSupabaseConfigured) throw new Error('Supabase authentication is not configured.');
+  const cleanUsername=username.trim().toLowerCase();
   const cleanPin=pin.trim();
+  if(!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(cleanUsername)) throw new Error('Enter a valid staff username.');
   if(!/^\d{6}$/.test(cleanPin)) throw new Error('Enter the configured 6-digit staff PIN.');
-  const response=await fetch(`${config.url}/functions/v1/staff-login`,{method:'POST',headers:jsonHeaders(),body:JSON.stringify({role,pin:cleanPin})});
+  const response=await fetch(`${config.url}/functions/v1/staff-login`,{method:'POST',headers:jsonHeaders(),body:JSON.stringify({username:cleanUsername,pin:cleanPin})});
   const data=await response.json().catch(()=>({}));
   if(!response.ok) throw new Error(data?.error||'Authentication failed.');
-  if(!data.access_token||!data.refresh_token||!data.user_id||!data.role) throw new Error('Authentication returned an incomplete session.');
+  if(!data.access_token||!data.refresh_token||!data.user_id||!data.role||!data.username) throw new Error('Authentication returned an incomplete session.');
   accessToken=data.access_token; refreshToken=data.refresh_token;
   localStorage.setItem('bmb_supabase_access_token',accessToken); localStorage.setItem('bmb_supabase_refresh_token',refreshToken);
-  return{id:data.user_id,access_token:data.access_token,refresh_token:data.refresh_token,role:data.role};
+  return{id:data.user_id,access_token:data.access_token,refresh_token:data.refresh_token,role:data.role,username:data.username};
 }
 
 export function restoreSession(){accessToken=localStorage.getItem('bmb_supabase_access_token')||'';refreshToken=localStorage.getItem('bmb_supabase_refresh_token')||'';return Boolean(accessToken||refreshToken);}
