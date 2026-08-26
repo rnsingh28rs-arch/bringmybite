@@ -3,8 +3,10 @@ import { useApp } from '../../context/AppContext';
 import { isSupabaseConfigured, signInWithStaffCredentials } from '../../cms/supabaseRest';
 import { Lock, X, CheckCircle2, AlertCircle, ShieldCheck, ArrowRight } from 'lucide-react';
 
+type StaffRole = 'admin' | 'manager' | 'chef' | 'd_admin';
+
 export const StaffLoginModal: React.FC = () => {
-  const { isStaffLoginOpen, setIsStaffLoginOpen, setTargetStaffRole, setActiveRole } = useApp();
+  const { isStaffLoginOpen, setIsStaffLoginOpen, targetStaffRole, setTargetStaffRole, setActiveRole } = useApp();
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -32,7 +34,14 @@ export const StaffLoginModal: React.FC = () => {
     setBusy(true);
     try {
       const session = await signInWithStaffCredentials(cleanUsername, cleanPin);
-      const effectiveRole = session.role as 'd_admin'|'admin'|'manager'|'chef';
+      const effectiveRole = session.role as StaffRole;
+      if (!['admin', 'manager', 'chef', 'd_admin'].includes(effectiveRole)) throw new Error('This staff account has an invalid role configuration.');
+      if (targetStaffRole && effectiveRole !== targetStaffRole) {
+        const label = targetStaffRole === 'd_admin' ? 'D-Admin' : targetStaffRole.charAt(0).toUpperCase() + targetStaffRole.slice(1);
+        const actual = effectiveRole === 'd_admin' ? 'D-Admin' : effectiveRole.charAt(0).toUpperCase() + effectiveRole.slice(1);
+        setErrorMsg(`This username belongs to ${actual}, not ${label}. Please use the correct staff account.`);
+        return;
+      }
       setActiveRole(effectiveRole);
       setSuccessMsg('Login successful.');
       window.dispatchEvent(new CustomEvent('bmb:staff-authenticated', { detail: { role: effectiveRole, userId: session.id, username: session.username } }));
@@ -49,6 +58,7 @@ export const StaffLoginModal: React.FC = () => {
       </div>
       <form onSubmit={handleLogin} className="p-5 space-y-4">
         <div className="p-3.5 bg-white rounded-2xl border border-gray-200"><div className="font-bold text-sm text-gray-900">Secure staff access</div><p className="text-xs text-gray-600 mt-1">Your role and permissions are loaded from the central Supabase staff record.</p></div>
+        {targetStaffRole && <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 font-semibold">Signing in to the {targetStaffRole === 'd_admin' ? 'D-Admin' : `${targetStaffRole.charAt(0).toUpperCase()}${targetStaffRole.slice(1)}`} panel.</div>}
         <label className="block text-xs font-bold text-gray-700">Username<input className="w-full mt-1.5 px-4 py-3.5 bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#124E33]" type="text" autoCapitalize="none" autoCorrect="off" autoComplete="username" placeholder="admin" value={username} onChange={e=>setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g,'').slice(0,32))} autoFocus/></label>
         <label className="block text-xs font-bold text-gray-700">6-digit PIN<input className="w-full mt-1.5 px-4 py-4 bg-white border border-gray-300 rounded-xl text-center text-2xl tracking-[0.45em] font-mono outline-none focus:ring-2 focus:ring-[#124E33]" type="password" inputMode="numeric" pattern="[0-9]{6}" minLength={6} maxLength={6} autoComplete="current-password" placeholder="••••••" value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,'').slice(0,6))}/></label>
         {errorMsg&&<div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0"/>{errorMsg}</div>}
