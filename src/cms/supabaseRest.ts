@@ -2,7 +2,7 @@ export interface SupabaseRestConfig { url: string; anonKey: string; }
 
 const config: SupabaseRestConfig = {
   url: (import.meta.env.NEXT_PUBLIC_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, ''),
-  anonKey: import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  anonKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 };
 export const isSupabaseConfigured = Boolean(config.url && config.anonKey);
 let accessToken = '';
@@ -38,7 +38,7 @@ export async function signInWithStaffPin(role: 'admin' | 'manager' | 'chef' | 'd
   refreshToken = data.refresh_token;
   localStorage.setItem('bmb_supabase_access_token', accessToken);
   localStorage.setItem('bmb_supabase_refresh_token', refreshToken);
-  return { id: data.user_id, access_token: accessToken, refresh_token: data.refresh_token, role: data.role };
+  return { id: data.user_id, access_token: data.access_token, refresh_token: data.refresh_token, role: data.role };
 }
 
 export function restoreSession() {
@@ -116,7 +116,7 @@ export async function supabaseUpsert<T>(table: string, body: T | T[]): Promise<T
 export async function supabasePatch<T>(table: string, query: string, body: Partial<T>): Promise<T[]> {
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
   let response = await fetch(`${config.url}/rest/v1/${table}?${query}`, { method: 'PATCH', headers: headers(), body: JSON.stringify(body) });
-  if (response.status === 401 && await refreshAccessToken()) response = await fetch(`${config.url}/rest/v1/${table}?${query}`, { method: 'PATCH', headers: headers(), body: JSON.stringify(body) });
+  if (response.status === 401 && await refreshAccessToken()) response = await fetch(`${config.url}/rest/v1/${table}?${query}`, { headers: headers(), body: JSON.stringify(body) });
   if (!response.ok) throw new Error(await response.text());
   return response.json();
 }
