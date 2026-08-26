@@ -1,7 +1,7 @@
 export interface SupabaseRestConfig { url: string; anonKey: string; }
 
 const config: SupabaseRestConfig = {
-  url: (import.meta.env.NEXT_PUBLIC_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, ''),
+  url: (import.meta.env.NEXT_PUBLIC_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || 'https://tknmdgeikmlsprqppukf.supabase.co').replace(/\/$/, ''),
   anonKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_8aupeYk6D1q4c0T_EtzgtQ_rViMvNME'
 };
 export const isSupabaseConfigured = Boolean(config.url && config.anonKey);
@@ -106,9 +106,9 @@ export async function supabaseRpc<T>(fn: string, args: Record<string, unknown> =
 }
 
 export async function supabaseUpsert<T>(table: string, body: T | T[]): Promise<T[]> {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to Vercel.');
+  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
   let response = await fetch(`${config.url}/rest/v1/${table}`, { method: 'POST', headers: { ...headers(), Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify(body) });
-  if (response.status === 401 && await refreshAccessToken()) response = await fetch(`${config.url}/rest/v1/${table}`, { method: 'POST', headers: { ...headers(), Prefer: 'return=representation' }, body: JSON.stringify(body) });
+  if (response.status === 401 && await refreshAccessToken()) response = await fetch(`${config.url}/rest/v1/${table}`, { method: 'POST', headers: { ...headers(), Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify(body) });
   if (!response.ok) throw new Error(await response.text());
   return response.json();
 }
