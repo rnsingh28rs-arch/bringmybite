@@ -26,6 +26,23 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
   return { id: data.user?.id, email: data.user?.email, access_token: accessToken, refresh_token: data.refresh_token };
 }
 
+export async function signInWithStaffPin(role: 'admin' | 'manager' | 'chef', pin: string): Promise<AuthUser & { role: string }> {
+  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  const response = await fetch(`${config.url}/functions/v1/staff-login`, {
+    method: 'POST',
+    headers: { apikey: config.anonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role, pin }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || 'Login failed.');
+  accessToken = data.access_token || '';
+  refreshToken = data.refresh_token || '';
+  if (!accessToken || !refreshToken || !data.user_id) throw new Error('Login failed.');
+  localStorage.setItem('bmb_supabase_access_token', accessToken);
+  localStorage.setItem('bmb_supabase_refresh_token', refreshToken);
+  return { id: data.user_id, access_token: accessToken, refresh_token: refreshToken, role: data.role };
+}
+
 export function restoreSession() {
   accessToken = localStorage.getItem('bmb_supabase_access_token') || '';
   refreshToken = localStorage.getItem('bmb_supabase_refresh_token') || '';
