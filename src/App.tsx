@@ -37,6 +37,16 @@ const LockedDAdminNotice: React.FC = () => (
   <div className="min-h-screen bg-[#F6F3EC] flex items-center justify-center p-5"><div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-7 text-center space-y-3"><div className="text-[10px] uppercase tracking-[0.22em] text-amber-600 font-black">D-ADMIN DESIGNER</div><h1 className="text-2xl font-black text-[#124E33]">D-Admin is locked</h1><p className="text-sm text-gray-600">Supabase authentication is required before the admin control centre can be opened.</p><button onClick={() => window.location.assign('/')} className="mt-2 px-4 py-2.5 rounded-xl bg-[#124E33] text-white font-bold">Return to Website</button></div></div>
 );
 
+const getStaffRouteRole = (): StaffRole | null => {
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+  const search = window.location.search.toLowerCase();
+  if (path.includes('/admin') || hash.includes('admin') || search.includes('role=admin')) return 'admin';
+  if (path.includes('/manager') || hash.includes('manager') || search.includes('role=manager')) return 'manager';
+  if (path.includes('/chef') || hash.includes('chef') || search.includes('role=chef')) return 'chef';
+  return null;
+};
+
 const MainContent: React.FC = () => {
   const { activeRole, setActiveRole, openStaffLogin } = useApp();
   const [verifiedStaffRole, setVerifiedStaffRole] = useState<StaffRole | null>(null);
@@ -44,78 +54,83 @@ const MainContent: React.FC = () => {
   useEffect(() => {
     const onAuth = (event: Event) => {
       const role = (event as CustomEvent<{ role?: StaffRole }>).detail?.role;
-      if (role === 'admin' || role === 'manager' || role === 'chef') setVerifiedStaffRole(role);
+      if (role === 'admin' || role === 'manager' || role === 'chef') {
+        setVerifiedStaffRole(role);
+        setActiveRole(role);
+      }
     };
     window.addEventListener('bmb:staff-authenticated', onAuth);
     return () => window.removeEventListener('bmb:staff-authenticated', onAuth);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const restoreVerifiedStaff = async () => {
-      if (!isSupabaseConfigured) return;
-      try {
-        const auth = await getCurrentUser();
-        if (!auth?.id || cancelled) return;
-        const rows = await supabaseRpc<StaffAccount>('bmb_get_staff_account');
-        const account = rows[0];
-        if (!account?.active || !['admin', 'manager', 'chef'].includes(account.role_id)) {
-          signOut();
-          return;
-        }
-        if (!cancelled) {
-          setVerifiedStaffRole(account.role_id);
-          setActiveRole(account.role_id);
-          window.dispatchEvent(new CustomEvent('bmb:staff-authenticated', { detail: { role: account.role_id, restored: true } }));
-        }
-      } catch {
-        if (!cancelled) setVerifiedStaffRole(null);
-      }
-    };
-    void restoreVerifiedStaff();
-    return () => { cancelled = true; };
   }, [setActiveRole]);
 
-  // Resolve /admin, /manager and /chef only once on initial page load.
-  // openStaffLogin is recreated by AppContext on each render; including it
-  // in this dependency list caused the modal to reopen after a successful
-  // login and even after pressing X.
+  // Restore an existing Supabase staff session. If the current URL requests a
+  // staff panel and no valid session exists, open the login modal exactly once.
+  // The URL itself is NOT treated as a persistent modal trigger after login or
+  // after the user closes the modal; this prevents the reopen loop.
+  useEffect(() => {
+    let cancelled = false;
+
+    const restoreOrRequestStaffAuth = async () => {
+      const requestedRole = getStaffRouteRole();
+
+      if (!isSupabaseConfigured) {
+        if (requestedRole && !cancelled) openStaffLogin(requestedRole);
+        return;
+      }
+
+      try {
+        const auth = await getCurrentUser();
+        if (cancelled) return;
+
+        if (auth?.id) {
+          const rows = await supabaseRpc<StaffAccount>('bmb_get_staff_account');
+          const account = rows[0];
+
+          if (account?.active && ['admin', 'manager', 'chef'].includes(account.role_id)) {
+            if (!cancelled) {
+              setVerifiedStaffRole(account.role_id);
+              setActiveRole(account.role_id);
+            }
+            return;
+          }
+
+          signOut();
+        }
+
+        if (requestedRole && !cancelled) {
+          setActiveRole('customer');
+          openStaffLogin(requestedRole);
+        }
+      } catch {
+        if (!cancelled && requestedRole) {
+          setActiveRole('customer');
+          openStaffLogin(requestedRole);
+        }
+      }
+    };
+
+    void restoreOrRequestStaffAuth();
+    return () => { cancelled = true; };
+  }, [setActiveRole, openStaffLogin]);
+
   useEffect(() => {
     const onPop = () => {
-      const p = window.location.pathname.toLowerCase();
-      if (p === '/' || p === '') {
+      const path = window.location.pathname.toLowerCase();
+      if (path === '/' || path === '') {
         setActiveRole('customer');
         setVerifiedStaffRole(null);
       }
     };
     window.addEventListener('popstate', onPop);
-    const path = window.location.pathname.toLowerCase();
-    const hash = window.location.hash.toLowerCase();
-    const search = window.location.search.toLowerCase();
-    if (path.includes('/admin') || hash.includes('admin') || search.includes('role=admin')) {
-      setActiveRole('customer');
-      openStaffLogin('admin');
-    } else if (path.includes('/manager') || hash.includes('manager') || search.includes('role=manager')) {
-      setActiveRole('customer');
-      openStaffLogin('manager');
-    } else if (path.includes('/chef') || hash.includes('chef') || search.includes('role=chef')) {
-      setActiveRole('customer');
-      openStaffLogin('chef');
-    }
     return () => window.removeEventListener('popstate', onPop);
-    // This is intentionally mount-only: the URL route should not reopen the
-    // authentication modal after login or after the user closes it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (activeRole !== 'customer' && verifiedStaffRole !== activeRole) openStaffLogin(activeRole);
-  }, [activeRole, verifiedStaffRole, openStaffLogin]);
+  }, [setActiveRole]);
 
   const dAdminPath = window.location.pathname.toLowerCase().startsWith('/d-admin') || window.location.hash.toLowerCase() === '#d-admin' || window.location.hash.toLowerCase() === '#superadmin';
   if (dAdminPath) return isSupabaseConfigured ? <DAdminGuard><DAdminDesigner /></DAdminGuard> : <LockedDAdminNotice />;
 
-  const effectiveRole = activeRole !== 'customer' && verifiedStaffRole !== activeRole ? 'customer' : activeRole;
+  // Staff role is rendered only after explicit verification. There is no
+  // second effect here that can reopen the login modal when activeRole changes.
+  const effectiveRole = activeRole !== 'customer' && verifiedStaffRole === activeRole ? activeRole : 'customer';
 
   return <MobileAppFrame><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar /><Header /><TodayMenuTicker />{effectiveRole !== 'customer' && <StaffNavBar />}<main className="flex-1">{effectiveRole === 'customer' && <><ExpiryReminderBanner /><OrderStatusNotifier /><HeroBanner /><PackagesSection /><LowerFeaturesGrid /></>}{effectiveRole === 'admin' && <AdminPanel />}{effectiveRole === 'manager' && <ManagerPanel />}{effectiveRole === 'chef' && <ChefPanel />}</main>{(effectiveRole === 'manager' || effectiveRole === 'chef') && <CalculatorWidget />}<Footer />{effectiveRole === 'customer' && <ChatBox />}<WeeklyMenuModal /><RegistrationModal /><InstantOrderModal /><ReferralModal /><BonusOffersModal /><RenewalModal /><ReminderPreviewModal /><NativeAppDownloadModal /><StaffLoginModal /></div></MobileAppFrame>;
 };
