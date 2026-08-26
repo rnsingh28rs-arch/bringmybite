@@ -23,6 +23,15 @@ export const StaffLoginModal: React.FC = () => {
 
   if (!isStaffLoginOpen) return null;
 
+  const closeLogin = () => {
+    setIsStaffLoginOpen(false);
+    setTargetStaffRole(null);
+    setActiveRole('customer');
+    setPassword('');
+    setErrorMsg('');
+    setSuccessMsg('');
+  };
+
   const chooseRole = (role: StaffRole) => {
     setSelectedRole(role);
     setTargetStaffRole(role);
@@ -61,6 +70,7 @@ export const StaffLoginModal: React.FC = () => {
       setSuccessMsg('Access granted.');
       window.setTimeout(() => {
         setIsStaffLoginOpen(false);
+        setTargetStaffRole(null);
         setPassword('');
         setSuccessMsg('');
       }, 350);
@@ -82,7 +92,7 @@ export const StaffLoginModal: React.FC = () => {
       <div className="bg-[#FAF7F2] rounded-3xl w-full max-w-lg shadow-2xl border-2 border-[#124E33] overflow-hidden">
         <div className="bg-[#0C3822] text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-[#F2C94C] text-black flex items-center justify-center"><Lock className="w-5 h-5" /></div><div><h2 className="text-lg font-bold text-[#F2C94C]">Staff Authentication</h2><p className="text-xs text-emerald-200">Supabase-authenticated staff only</p></div></div>
-          <button onClick={() => setIsStaffLoginOpen(false)} className="p-2 rounded-xl text-emerald-300 hover:text-white"><X className="w-5 h-5" /></button>
+          <button type="button" aria-label="Close staff authentication" onClick={closeLogin} className="p-2 rounded-xl text-emerald-300 hover:text-white"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="p-4 border-b border-gray-200 grid grid-cols-3 gap-2">
