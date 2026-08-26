@@ -1,7 +1,10 @@
 export interface SupabaseRestConfig { url: string; anonKey: string; }
+
+// Vercel is currently configured with NEXT_PUBLIC_SUPABASE_* variables.
+// Keep VITE_* as a fallback for local Vite deployments.
 const config: SupabaseRestConfig = {
-  url: (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, ''),
-  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  url: (import.meta.env.NEXT_PUBLIC_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, ''),
+  anonKey: import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 };
 export const isSupabaseConfigured = Boolean(config.url && config.anonKey);
 let accessToken = '';
@@ -20,7 +23,7 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
   refreshToken = data.refresh_token || '';
   localStorage.setItem('bmb_supabase_access_token', accessToken);
   localStorage.setItem('bmb_supabase_refresh_token', refreshToken);
-  return { id: data.user?.id, email: data.user?.email, access_token: accessToken, refresh_token: refreshToken };
+  return { id: data.user?.id, email: data.user?.email, access_token: accessToken, refresh_token: data.refresh_token };
 }
 
 export function restoreSession() {
