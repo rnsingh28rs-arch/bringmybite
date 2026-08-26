@@ -70,7 +70,7 @@ export const AppProvider:React.FC<{children:React.ReactNode}>=({children})=>{
   const loginStaff=async(role:'admin'|'manager'|'chef',pin:string)=>{
     if(!isSupabaseConfigured) return false;
     const cleanPin=pin.trim();
-    if(!/^\d{4,8}$/.test(cleanPin)) return false;
+    if(!/^\d{6}$/.test(cleanPin)) return false;
     try{
       restoreSession();
       const session=await signInWithStaffPin(role,cleanPin);
