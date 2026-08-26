@@ -31,7 +31,7 @@ import { CmsProvider } from './cms/CmsContext';
 import { getCurrentUser, isSupabaseConfigured, signOut, supabaseRpc } from './cms/supabaseRest';
 
 type StaffRole='d_admin'|'admin'|'manager'|'chef';
-type StaffAccount={user_id:string;email:string;role_id:string;active:boolean};
+type StaffAccount={user_id:string;username:string;email:string;role_id:string;active:boolean};
 const routeRole=():StaffRole|null=>{const p=window.location.pathname.toLowerCase();if(p==='/d-admin'||p.startsWith('/d-admin/'))return'd_admin';if(p==='/admin'||p.startsWith('/admin/'))return'admin';if(p==='/manager'||p.startsWith('/manager/'))return'manager';if(p==='/chef'||p.startsWith('/chef/'))return'chef';return null;};
 
 const MainContent:React.FC=()=>{
