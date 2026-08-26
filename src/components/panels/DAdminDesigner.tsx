@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useCms, PanelConfig, RoleConfig, PermissionConfig } from '../../cms/CmsContext';
 import { BannerConfig, RegistrationFieldConfig } from '../../cms/cmsDefaults';
 import { PackageType } from '../../types';
-import { isSupabaseConfigured, restoreSession, signIn, signOut, supabaseSelect } from '../../cms/supabaseRest';
+import { signOut } from '../../cms/supabaseRest';
 import { Save, Plus, Trash2, ShieldCheck, LayoutDashboard, Image, Utensils, IndianRupee, FileText, CreditCard, Settings, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { StaffFinancePanel } from './StaffFinancePanel';
 import { GSTBillingPanel } from './GSTBillingPanel';
@@ -13,42 +13,11 @@ const card = 'bg-white rounded-2xl border border-gray-200 shadow-sm p-5';
 
 export const DAdminDesigner: React.FC = () => {
   const cms = useCms();
-  const [authorized, setAuthorized] = useState(!isSupabaseConfigured);
-  const [loginChecked, setLoginChecked] = useState(!isSupabaseConfigured);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
   const [tab, setTab] = useState('overview');
   const [message, setMessage] = useState('');
   const [selectedRole, setSelectedRole] = useState('ceo-director');
   const [newPanel, setNewPanel] = useState<PanelConfig>({ id: '', name: '', sort_order: 99, active: true });
   const [newRole, setNewRole] = useState<RoleConfig>({ id: '', name: '', active: true });
-
-  React.useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    const check = async () => {
-      restoreSession();
-      try {
-        const users = await supabaseSelect<{ user_id: string; email: string; role_id: string; active: boolean }>('bmb_admin_users', 'select=user_id,email,role_id,active&limit=1');
-        const ok = Boolean(users[0]?.active && users[0]?.role_id === 'ceo-director');
-        setAuthorized(ok);
-        if (ok) await cms.initializeDefaults();
-      } catch { setAuthorized(false); }
-      finally { setLoginChecked(true); }
-    };
-    check();
-  }, []);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoginError('');
-    try {
-      const user = await signIn(email.trim(), password);
-      const rows = await supabaseSelect<{ user_id: string; email: string; role_id: string; active: boolean }>('bmb_admin_users', `select=user_id,email,role_id,active&user_id=eq.${encodeURIComponent(user.id)}&limit=1`);
-      if (!rows[0]?.active || rows[0].role_id !== 'ceo-director') { signOut(); throw new Error('This account is not registered as CEO Cum Director / D-Admin.'); }
-      setAuthorized(true);
-      await cms.initializeDefaults();
-    } catch (err) { setAuthorized(false); setLoginError(err instanceof Error ? err.message : 'Login failed'); }
-  };
 
   const flash = (text: string) => { setMessage(text); window.setTimeout(() => setMessage(''), 2500); };
 
@@ -56,12 +25,6 @@ export const DAdminDesigner: React.FC = () => {
     ['overview','Overview',LayoutDashboard], ['branding','Brand & Business',Settings], ['banners','Banners',Image], ['menu','Menu',Utensils],
     ['pricing','Pricing',IndianRupee], ['registration','Registration Form',FileText], ['payments','Payments & UPI',CreditCard], ['staff','Staff Salaries',ShieldCheck], ['billing','GST Billing',CreditCard], ['access','Roles & Permissions',ShieldCheck], ['all-panels','All Panels',LayoutDashboard]
   ] as const;
-
-  if (isSupabaseConfigured && !loginChecked) return <div className="min-h-screen flex items-center justify-center bg-[#F6F3EC]"><div className="text-sm font-bold text-[#124E33]">Checking D-Admin access…</div></div>;
-
-  if (isSupabaseConfigured && !authorized) {
-    return <div className="min-h-screen bg-[#F6F3EC] flex items-center justify-center p-5"><form onSubmit={handleLogin} className="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-7 space-y-4"><div className="text-[10px] uppercase tracking-[0.22em] text-amber-600 font-black">D-ADMIN DESIGNER</div><h1 className="text-2xl font-black text-[#124E33]">CEO Cum Director Login</h1><p className="text-sm text-gray-500">Sign in with the Supabase Auth account registered for D-Admin.</p><input className={input} type="email" required placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)}/><input className={input} type="password" required placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)}/>{loginError&&<div className="text-sm text-rose-700 bg-rose-50 p-3 rounded-xl">{loginError}</div>}<button className="w-full py-3 rounded-xl bg-[#124E33] text-white font-black">Sign in to D-Admin</button></form></div>;
-  }
 
   return (
     <div className="min-h-[calc(100vh-80px)] bg-[#F6F3EC] p-4 sm:p-6 lg:p-8">
@@ -77,7 +40,8 @@ export const DAdminDesigner: React.FC = () => {
             <span className={`px-3 py-2 rounded-xl text-xs font-bold ${cms.connected ? 'bg-emerald-500/20 text-emerald-200' : 'bg-amber-500/20 text-amber-200'}`}>
               {cms.connected ? '● Supabase connected' : '● Local preview mode'}
             </span>
-            <button onClick={() => cms.refresh()} className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20" title="Refresh central data"><RefreshCw className="w-4 h-4" /></button>{isSupabaseConfigured && <button onClick={() => { signOut(); setAuthorized(false); }} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold">Logout</button>}
+            <button onClick={() => cms.refresh()} className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20" title="Refresh central data"><RefreshCw className="w-4 h-4" /></button>
+            {<button onClick={() => { signOut(); window.location.assign('/'); }} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold">Logout</button>}
           </div>
         </header>
 
@@ -106,7 +70,6 @@ export const DAdminDesigner: React.FC = () => {
     </div>
   );
 };
-
 
 function AllPanels({ cms }: { cms: ReturnType<typeof useCms> }) {
   return <div className={card}>
@@ -140,7 +103,7 @@ function Branding({ cms, flash }: any) {
 
 function Banners({ cms, flash }: any) {
   const blank: BannerConfig = { ...cms.banners[0], id: `banner-${Date.now()}`, title:'New Banner', tag:'NEW', highlight_price:'', period:'', thali_rate:'', description:'', features:[], sort_order:cms.banners.length+1, active:true, image_url:'', image_alt:'', dish_highlights:[] };
-  const [draft, setDraft]=useState<BannerConfig>(cms.banners[0] || blank);
+  const [draft,setDraft]=useState<BannerConfig>(cms.banners[0] || blank);
   const [editing,setEditing]=useState<string>(cms.banners[0]?.id || '');
   const [uploading,setUploading]=useState(false);
   const select=(id:string)=>{const b=cms.banners.find((x:any)=>x.id===id);if(b){setEditing(id);setDraft(b);}};
