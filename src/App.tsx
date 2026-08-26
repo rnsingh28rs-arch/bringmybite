@@ -46,11 +46,9 @@ const LockedDAdminNotice: React.FC = () => (
 
 const getStaffRouteRole = (): StaffRole | null => {
   const path = window.location.pathname.toLowerCase();
-  const hash = window.location.hash.toLowerCase();
-  const search = window.location.search.toLowerCase();
-  if (path.includes('/admin') || hash.includes('admin') || search.includes('role=admin')) return 'admin';
-  if (path.includes('/manager') || hash.includes('manager') || search.includes('role=manager')) return 'manager';
-  if (path.includes('/chef') || hash.includes('chef') || search.includes('role=chef')) return 'chef';
+  if (path === '/admin' || path.startsWith('/admin/')) return 'admin';
+  if (path === '/manager' || path.startsWith('/manager/')) return 'manager';
+  if (path === '/chef' || path.startsWith('/chef/')) return 'chef';
   return null;
 };
 
@@ -59,9 +57,8 @@ const MainContent: React.FC = () => {
   const [verifiedStaffRole, setVerifiedStaffRole] = useState<StaffRole | null>(null);
   const authEventRef = React.useRef(false);
   const modalDismissedRef = React.useRef(false);
+  const routeRole = getStaffRouteRole();
 
-  // A successful login is authoritative for this mounted app. This prevents
-  // the initial route-check from racing the login modal and reopening it.
   useEffect(() => {
     const onAuth = (event: Event) => {
       const role = (event as CustomEvent<{ role?: StaffRole }>).detail?.role;
@@ -72,27 +69,21 @@ const MainContent: React.FC = () => {
         setActiveRole(role);
       }
     };
-
     const onDismiss = () => {
-      // Treat an explicit X/Cancel as intentional for this mounted route.
-      // A refresh will perform authentication again.
       modalDismissedRef.current = true;
       authEventRef.current = true;
       setVerifiedStaffRole(null);
       setActiveRole('customer');
     };
-
     const onLogout = () => {
       authEventRef.current = true;
       modalDismissedRef.current = false;
       setVerifiedStaffRole(null);
       setActiveRole('customer');
     };
-
     window.addEventListener('bmb:staff-authenticated', onAuth);
     window.addEventListener('bmb:staff-login-dismissed', onDismiss);
     window.addEventListener('bmb:staff-logout', onLogout);
-
     return () => {
       window.removeEventListener('bmb:staff-authenticated', onAuth);
       window.removeEventListener('bmb:staff-login-dismissed', onDismiss);
@@ -102,71 +93,69 @@ const MainContent: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-
     const restoreOrRequestStaffAuth = async () => {
-      const requestedRole = getStaffRouteRole();
-      if (!requestedRole || modalDismissedRef.current) return;
-
+      if (!routeRole || modalDismissedRef.current) return;
       if (!isSupabaseConfigured) {
-        if (!cancelled && !authEventRef.current) openStaffLogin(requestedRole);
+        if (!cancelled && !authEventRef.current) openStaffLogin(routeRole);
         return;
       }
-
       try {
         const auth = await getCurrentUser();
         if (cancelled || authEventRef.current || modalDismissedRef.current) return;
-
         if (auth?.id) {
           const rows = await supabaseRpc<StaffAccount>('bmb_get_staff_account');
           const account = rows[0];
-
-          if (account?.active && ['admin', 'manager', 'chef'].includes(account.role_id)) {
+          if (account?.active && account.role_id === routeRole) {
             if (!cancelled) {
               authEventRef.current = true;
-              setVerifiedStaffRole(account.role_id);
-              setActiveRole(account.role_id);
+              setVerifiedStaffRole(routeRole);
+              setActiveRole(routeRole);
             }
             return;
           }
-
           await signOut();
         }
-
         if (!cancelled && !authEventRef.current && !modalDismissedRef.current) {
           setActiveRole('customer');
-          openStaffLogin(requestedRole);
+          openStaffLogin(routeRole);
         }
       } catch {
         if (!cancelled && !authEventRef.current && !modalDismissedRef.current) {
           setActiveRole('customer');
-          openStaffLogin(requestedRole);
+          openStaffLogin(routeRole);
         }
       }
     };
-
     void restoreOrRequestStaffAuth();
     return () => { cancelled = true; };
-  }, []);
+  }, [routeRole, openStaffLogin, setActiveRole]);
+
+  useEffect(() => {
+    if (!routeRole || !verifiedStaffRole || verifiedStaffRole === routeRole) return;
+    setVerifiedStaffRole(null);
+    setActiveRole('customer');
+  }, [routeRole, verifiedStaffRole, setActiveRole]);
 
   useEffect(() => {
     const onPop = () => {
-      const path = window.location.pathname.toLowerCase();
-      if (path === '/' || path === '') {
+      const nextRole = getStaffRouteRole();
+      if (!nextRole) {
         authEventRef.current = false;
         modalDismissedRef.current = false;
         setActiveRole('customer');
         setVerifiedStaffRole(null);
       }
     };
-
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, [setActiveRole]);
 
-  const dAdminPath = window.location.pathname.toLowerCase().startsWith('/d-admin') || window.location.hash.toLowerCase() === '#d-admin' || window.location.hash.toLowerCase() === '#superadmin';
+  const dAdminPath = window.location.pathname.toLowerCase() === '/d-admin' || window.location.pathname.toLowerCase().startsWith('/d-admin/') || window.location.hash.toLowerCase() === '#d-admin' || window.location.hash.toLowerCase() === '#superadmin';
   if (dAdminPath) return isSupabaseConfigured ? <DAdminGuard><DAdminDesigner /></DAdminGuard> : <LockedDAdminNotice />;
 
-  const effectiveRole = activeRole !== 'customer' && verifiedStaffRole === activeRole ? activeRole : 'customer';
+  const effectiveRole = routeRole
+    ? (activeRole === routeRole && verifiedStaffRole === routeRole ? routeRole : 'customer')
+    : (activeRole !== 'customer' && verifiedStaffRole === activeRole ? activeRole : 'customer');
 
   return (
     <MobileAppFrame>
@@ -175,26 +164,15 @@ const MainContent: React.FC = () => {
         <Header />
         <TodayMenuTicker />
         {effectiveRole !== 'customer' && <StaffNavBar />}
-
         <main className="flex-1">
-          {effectiveRole === 'customer' && (
-            <>
-              <ExpiryReminderBanner />
-              <OrderStatusNotifier />
-              <HeroBanner />
-              <PackagesSection />
-              <LowerFeaturesGrid />
-            </>
-          )}
+          {effectiveRole === 'customer' && <><ExpiryReminderBanner /><OrderStatusNotifier /><HeroBanner /><PackagesSection /><LowerFeaturesGrid /></>}
           {effectiveRole === 'admin' && <AdminPanel />}
           {effectiveRole === 'manager' && <ManagerPanel />}
           {effectiveRole === 'chef' && <ChefPanel />}
         </main>
-
         {(effectiveRole === 'manager' || effectiveRole === 'chef') && <CalculatorWidget />}
         <Footer />
         {effectiveRole === 'customer' && <ChatBox />}
-
         <WeeklyMenuModal />
         <RegistrationModal />
         <InstantOrderModal />
@@ -203,18 +181,12 @@ const MainContent: React.FC = () => {
         <RenewalModal />
         <ReminderPreviewModal />
         <NativeAppDownloadModal />
-        {effectiveRole === 'customer' && <StaffLoginModal />}
+        {effectiveRole === 'customer' && routeRole && <StaffLoginModal />}
       </div>
     </MobileAppFrame>
   );
 };
 
 export default function App() {
-  return (
-    <CmsProvider>
-      <AppProvider>
-        <MainContent />
-      </AppProvider>
-    </CmsProvider>
-  );
+  return <CmsProvider><AppProvider><MainContent /></AppProvider></CmsProvider>;
 }
