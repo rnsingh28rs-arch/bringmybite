@@ -1,4 +1,5 @@
 # Automated one-shot refactor: Banner/CMS is authoritative for customer-facing prices.
+# Fable execution trigger: run the already-defined authoritative pricing migration.
 name: Pricing Banner Refactor
 
 on:
@@ -89,7 +90,7 @@ jobs:
               s = s.replace("import { PaymentMethod } from '../../types';", "import { PaymentMethod } from '../../types';\nimport { useCms } from '../../cms/CmsContext';")
           if "const { banners } = useCms();" not in s:
               s = s.replace("  const {", "  const { banners } = useCms();\n\n  const {", 1)
-          old = """  // Calculate monthly & total price\n  const baseMonthlyPrice =\n    packageType === 'VEG CLASSIC'\n      ? pricing.vegMonthly\n      : packageType === 'EGG DELIGHT'\n      ? pricing.eggMonthly\n      : pricing.nonVegMonthly;\n\n  const multiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;\n  const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 0.90 : 1.0;\n  const calculatedTotal = Math.round(baseMonthlyPrice * multiplier * discountFactor);\n"""
+          old = """  // Calculate monthly & total price\n  const baseMonthlyPrice =\n    packageType === 'VEG CLASSIC'\n      ? pricing.vegMonthly\n      : packageType === 'EGG DELIGHT'\n      ? pricing.eggMonthly\n      : pricing.nonVegMonthly;\n\n  const multiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;\n  const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 3 : 0.90;\n  const calculatedTotal = Math.round(baseMonthlyPrice * multiplier * discountFactor);\n"""
           new = """  const selectedBanner = banners.find((b) => b.active && b.package_key === packageType);\n  const configuredPriceText = selectedBanner?.highlight_price || 'Price not set';\n  const configuredAmount = Number(configuredPriceText.replace(/[^0-9.]/g, '')) || 0;\n"""
           if old in s: s=s.replace(old,new)
           s=s.replace('calculatedTotal','configuredAmount').replace('baseMonthlyPrice','configuredAmount')
@@ -117,7 +118,6 @@ jobs:
           old_start = """  const basePrice =\n    activeSub.packageType === 'VEG CLASSIC'\n      ? pricing.vegMonthly\n      : activeSub.packageType === 'EGG DELIGHT'\n      ? pricing.eggMonthly\n      : pricing.nonVegMonthly;\n\n  const multiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;\n  const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 0.90 : 1.0;\n  const totalRenewalAmount = Math.round(basePrice * multiplier * discountFactor);\n"""
           new_start = """  const selectedBanner = banners.find((b) => b.active && b.package_key === activeSub.packageType);\n  const configuredPriceText = selectedBanner?.highlight_price || 'Price not set';\n  const totalRenewalAmount = Number(configuredPriceText.replace(/[^0-9.]/g, '')) || 0;\n"""
           if old_start in s: s=s.replace(old_start,new_start)
-          s = s.replace("<div className=\"text-[10px] font-normal opacity-90 mt-0.5\">\n                        {d === '3 Months' ? '5% OFF' : d === '6 Months' ? '10% OFF' : 'Standard'}\n                      </div>", "")
           s = re.sub(r"\s*\{duration !== '1 Month' && \(\s*<div className=\"flex justify-between text-xs text-emerald-600 font-semibold\">.*?</div>\s*\)", '', s, flags=re.S)
           s = re.sub(r"\s*<div className=\"flex justify-between text-xs text-gray-600\">\s*<span>Base Monthly Rate:</span>.*?</div>", '', s, count=1, flags=re.S)
           s = s.replace('Total Renewal Amount:', 'Configured Renewal Price:')
