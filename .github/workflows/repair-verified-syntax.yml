@@ -1,0 +1,32 @@
+name: Repair verified syntax issue
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply surgical fix
+        run: |
+          python - <<'PY2'
+          from pathlib import Path
+          p = Path("src/components/customer/InstantOrderModal.tsx")
+          text = p.read_text()
+          if not text.rstrip().endswith("};"):
+              if not text.rstrip().endswith(");"):
+                  raise SystemExit("Unexpected file ending; refusing to modify")
+              p.write_text(text.rstrip() + "\n};\n")
+          PY2
+          rm .github/workflows/repair-verified-syntax.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/customer/InstantOrderModal.tsx .github/workflows/repair-verified-syntax.yml
+          git commit -m "fix: close InstantOrderModal component"
+          git push
