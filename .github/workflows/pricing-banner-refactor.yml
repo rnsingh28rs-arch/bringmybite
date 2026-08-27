@@ -1,4 +1,4 @@
-# retry: broaden legacy pricing fallback removal
+# Automated one-shot refactor: Banner/CMS is authoritative for customer-facing prices.
 name: Pricing Banner Refactor
 
 on:
@@ -18,53 +18,153 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Install dependencies
         run: npm ci
-      - name: Apply pricing refactor
+
+      - name: Apply banner-authoritative pricing refactor
         shell: python
         run: |
           from pathlib import Path
           import re
+
           def req_replace(path, old, new):
-              p=Path(path); s=p.read_text(); n=s.count(old)
-              if n == 0: raise SystemExit(f'Expected text not found in {path}: {old[:100]}')
-              p.write_text(s.replace(old,new)); print(path, 'replaced', n)
-          p=Path('src/components/panels/DAdminDesigner.tsx'); s=p.read_text()
-          s=s.replace(', IndianRupee','').replace("['pricing','Pricing',IndianRupee], ", '').replace("        {tab === 'pricing' && <Pricing cms={cms} flash={flash} />}\n", '').replace("import { CalculatorWidget } from '../common/CalculatorWidget';\n", '').replace("      <CalculatorWidget />\n", '')
-          s,n=re.subn(r'\nfunction Pricing\(.*?\nfunction Registration\(', '\nfunction Registration(', s, flags=re.S)
-          if n != 1: raise SystemExit(f'DAdmin Pricing function removal matched {n}')
-          s=s.replace("    ['Pricing records', Object.keys(cms.pricing).length, 'Used everywhere in the app']\n", '').replace("    ['Panels', cms.panels.filter(p=>p.active).length, 'Designer-created workspaces'],\n    ['Pricing records', Object.keys(cms.pricing).length, 'Used everywhere in the app']\n", "    ['Panels', cms.panels.filter(p=>p.active).length, 'Designer-created workspaces']\n")
+              p = Path(path)
+              s = p.read_text()
+              n = s.count(old)
+              if n == 0:
+                  raise SystemExit(f'Expected text not found in {path}: {old[:120]}')
+              p.write_text(s.replace(old, new))
+              print(path, 'replaced', n)
+
+          # D-Admin: remove obsolete Pricing tab/module and calculator.
+          p = Path('src/components/panels/DAdminDesigner.tsx'); s = p.read_text()
+          s = s.replace(', IndianRupee', '')
+          s = s.replace("['pricing','Pricing',IndianRupee], ", '')
+          s = s.replace("        {tab === 'pricing' && <Pricing cms={cms} flash={flash} />}\n", '')
+          s = s.replace("import { CalculatorWidget } from '../common/CalculatorWidget';\n", '')
+          s = s.replace("      <CalculatorWidget />\n", '')
+          s, n = re.subn(r'\nfunction Pricing\(.*?\nfunction Registration\(', '\nfunction Registration(', s, flags=re.S)
+          if n != 1:
+              raise SystemExit(f'DAdmin Pricing function removal matched {n}')
+          s = s.replace("    ['Pricing records', Object.keys(cms.pricing).length, 'Used everywhere in the app']\n", '')
+          s = s.replace("    ['Panels', cms.panels.filter(p=>p.active).length, 'Designer-created workspaces'],\n    ['Pricing records', Object.keys(cms.pricing).length, 'Used everywhere in the app']\n", "    ['Panels', cms.panels.filter(p=>p.active).length, 'Designer-created workspaces']\n")
           p.write_text(s)
+
+          # Remove obsolete Pricing workspace metadata.
           req_replace('src/cms/cmsDefaults.ts', "['dashboard', 'Executive Dashboard'], ['banners', 'Banners & Home'], ['menu', 'Menu & Dishes'], ['pricing', 'Pricing & Packages'],\n", "['dashboard', 'Executive Dashboard'], ['banners', 'Banners & Home'], ['menu', 'Menu & Dishes'],\n")
+
+          # Remove generic calculator from application shell.
           req_replace('src/App.tsx', "import { CalculatorWidget } from './components/common/CalculatorWidget';\n", '')
           req_replace('src/App.tsx', "        {(role === 'manager' || role === 'chef') && <CalculatorWidget />}\n", '')
-          p=Path('src/components/customer/PackagesSection.tsx'); s=p.read_text().replace("import { useApp } from '../../context/AppContext';", "import { useApp } from '../../context/AppContext';\nimport { useCms } from '../../cms/CmsContext';").replace("    pricing,\n", '')
-          marker="  } = useApp();"; helper="""  } = useApp();\n  const { banners } = useCms();\n  const getBanner = (packageKey: PackageType) => banners.find((b) => b.active && b.package_key === packageKey);\n  const packagePrice = (packageKey: PackageType) => getBanner(packageKey)?.highlight_price || 'Price not set';\n  const instantPrice = (type: 'veg' | 'egg' | 'non-veg') => banners.find((b) => b.active && b.thali_key === type)?.thali_rate || 'Price not set';"""
-          if marker not in s: raise SystemExit('PackagesSection hook marker missing')
-          s=s.replace(marker,helper,1)
-          for a,b in {"₹{pricing.vegMonthly.toLocaleString()}":"{packagePrice('VEG CLASSIC')}","₹{pricing.eggMonthly.toLocaleString()}":"{packagePrice('EGG DELIGHT')}","₹{pricing.nonVegMonthly.toLocaleString()}":"{packagePrice('NON-VEG CLUB')}","₹{pricing.vegThaliInstant}":"{instantPrice('veg')}","₹{pricing.eggThaliInstant}":"{instantPrice('egg')}","₹{pricing.nonVegThaliInstant}":"{instantPrice('non-veg')}"}.items(): s=s.replace(a,b)
-          if 'pricing.' in s: raise SystemExit('PackagesSection still contains pricing references')
+
+          # Customer Packages: read final prices directly from active Banner/CMS records.
+          p = Path('src/components/customer/PackagesSection.tsx'); s = p.read_text()
+          if "import { useCms } from '../../cms/CmsContext';" not in s:
+              s = s.replace("import { useApp } from '../../context/AppContext';", "import { useApp } from '../../context/AppContext';\nimport { useCms } from '../../cms/CmsContext';")
+          s = s.replace("    pricing,\n", '')
+          marker = "  } = useApp();"
+          if marker not in s:
+              raise SystemExit('PackagesSection hook marker missing')
+          if 'const { banners } = useCms();' not in s:
+              helper = """  } = useApp();\n  const { banners } = useCms();\n  const getBanner = (packageKey: PackageType) => banners.find((b) => b.active && b.package_key === packageKey);\n  const packagePrice = (packageKey: PackageType) => getBanner(packageKey)?.highlight_price || 'Price not set';\n  const instantPrice = (type: 'veg' | 'egg' | 'non-veg') => banners.find((b) => b.active && b.thali_key === type)?.thali_rate || 'Price not set';"""
+              s = s.replace(marker, helper, 1)
+          replacements = {
+              "₹{pricing.vegMonthly.toLocaleString()}": "{packagePrice('VEG CLASSIC')}",
+              "₹{pricing.eggMonthly.toLocaleString()}": "{packagePrice('EGG DELIGHT')}",
+              "₹{pricing.nonVegMonthly.toLocaleString()}": "{packagePrice('NON-VEG CLUB')}",
+              "₹{pricing.vegThaliInstant}": "{instantPrice('veg')}",
+              "₹{pricing.eggThaliInstant}": "{instantPrice('egg')}",
+              "₹{pricing.nonVegThaliInstant}": "{instantPrice('non-veg')}",
+          }
+          for a, b in replacements.items():
+              s = s.replace(a, b)
           p.write_text(s)
-          p=Path('src/components/customer/HeroBanner.tsx'); s=p.read_text().replace("    pricing,\n", ''); s=re.sub(r'`[^`]*\$\{pricing\.[^}]+\}[^`]*`', "'Price not set'", s)
-          if 'pricing.' in s: raise SystemExit('HeroBanner still contains legacy pricing references')
+
+          # Hero: CMS banners are authoritative. Fallback never invents a price.
+          p = Path('src/components/customer/HeroBanner.tsx'); s = p.read_text()
+          s = s.replace("    pricing,\n", '')
+          s = s.replace("highlightPrice: `₹${pricing.vegMonthly.toLocaleString()}`", "highlightPrice: 'Price not set'")
+          s = s.replace("thaliRate: `₹${pricing.vegThaliInstant} Instant Single Thali`", "thaliRate: 'Price not set'")
+          s = s.replace("highlightPrice: `₹${pricing.eggMonthly.toLocaleString()}`", "highlightPrice: 'Price not set'")
+          s = s.replace("thaliRate: `₹${pricing.eggThaliInstant} Instant Single Thali`", "thaliRate: 'Price not set'")
+          s = s.replace("highlightPrice: `₹${pricing.nonVegMonthly.toLocaleString()}`", "highlightPrice: 'Price not set'")
+          s = s.replace("thaliRate: `₹${pricing.nonVegThaliInstant} Instant Single Thali`", "thaliRate: 'Price not set'")
+          s = s.replace("highlightPrice: `From ₹${pricing.vegThaliInstant}`", "highlightPrice: 'Price not set'")
+          s = s.replace("thaliRate: `Veg: ₹${pricing.vegThaliInstant} | Egg: ₹${pricing.eggThaliInstant} | Non-Veg: ₹${pricing.nonVegThaliInstant}`", "thaliRate: 'Price not set'")
+          s = s.replace("dishHighlights: ['Veg Thali (₹80)', 'Egg Thali (₹100)', 'Non-Veg Thali (₹110)', 'Steaming Hot Gate Drop']", "dishHighlights: ['Veg Thali', 'Egg Thali', 'Non-Veg Thali', 'Steaming Hot Gate Drop']")
+          if 'pricing.' in s:
+              raise SystemExit('HeroBanner still contains legacy pricing references')
           p.write_text(s)
-          p=Path('src/components/customer/RegistrationModal.tsx'); s=p.read_text().replace("    pricing,\n", '')
-          old="""  // Calculate monthly & total price\n  const baseMonthlyPrice =\n    packageType === 'VEG CLASSIC'\n      ? pricing.vegMonthly\n      : packageType === 'EGG DELIGHT'\n      ? pricing.eggMonthly\n      : pricing.nonVegMonthly;\n\n  const multiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;\n  const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 0.90 : 1.0;\n  const calculatedTotal = Math.round(baseMonthlyPrice * multiplier * discountFactor);\n"""
-          new="""  const { banners } = useCms();\n  const selectedBanner = banners.find((b) => b.active && b.package_key === packageType);\n  const configuredPriceText = selectedBanner?.highlight_price || 'Price not set';\n  const configuredAmount = Number(configuredPriceText.replace(/[^0-9.]/g, '')) || 0;\n"""
-          if old not in s: raise SystemExit('Registration pricing calculation block missing')
-          s=s.replace(old,new).replace('calculatedTotal','configuredAmount').replace('baseMonthlyPrice','configuredAmount'); p.write_text(s)
-          p=Path('src/components/customer/InstantOrderModal.tsx'); s=p.read_text().replace("    pricing,\n", '').replace("import { PaymentMethod } from '../../types';", "import { PaymentMethod } from '../../types';\nimport { useCms } from '../../cms/CmsContext';")
-          marker="  const {\n    isInstantOrderOpen,"; 
-          if marker not in s: raise SystemExit('InstantOrderModal hook marker missing')
-          s=s.replace(marker,"  const { banners } = useCms();\n  const {\n    isInstantOrderOpen,",1)
-          old="""  const unitPrice =\n    thaliType === 'veg'\n      ? pricing.vegThaliInstant\n      : thaliType === 'egg'\n      ? pricing.eggThaliInstant\n      : pricing.nonVegThaliInstant;\n\n  const totalAmount = unitPrice * quantity;\n"""; new="""  const configuredRate = banners.find((b) => b.active && b.thali_key === thaliType)?.thali_rate || '';\n  const unitPrice = Number(configuredRate.replace(/[^0-9.]/g, '')) || 0;\n  const totalAmount = unitPrice;\n"""
-          if old not in s: raise SystemExit('Instant pricing calculation block missing')
-          s=s.replace(old,new); p.write_text(s)
+
+          # Subscription registration: duration is a service selection, not a price formula.
+          p = Path('src/components/customer/RegistrationModal.tsx'); s = p.read_text()
+          s = s.replace("    pricing,\n", '')
+          old = """  // Calculate monthly & total price\n  const baseMonthlyPrice =\n    packageType === 'VEG CLASSIC'\n      ? pricing.vegMonthly\n      : packageType === 'EGG DELIGHT'\n      ? pricing.eggMonthly\n      : pricing.nonVegMonthly;\n\n  const multiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;\n  const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 0.90 : 1.0;\n  const calculatedTotal = Math.round(baseMonthlyPrice * multiplier * discountFactor);\n"""
+          new = """  const { banners } = useCms();\n  const selectedBanner = banners.find((b) => b.active && b.package_key === packageType);\n  const configuredPriceText = selectedBanner?.highlight_price || 'Price not set';\n  const configuredAmount = Number(configuredPriceText.replace(/[^0-9.]/g, '')) || 0;\n"""
+          if old in s:
+              s = s.replace(old, new)
+          elif 'const selectedBanner' not in s:
+              raise SystemExit('Registration pricing calculation block missing')
+          s = s.replace('calculatedTotal', 'configuredAmount').replace('baseMonthlyPrice', 'configuredAmount')
+          p.write_text(s)
+
+          # Instant Thali: configured Banner rate is the final price; quantity must not multiply it.
+          p = Path('src/components/customer/InstantOrderModal.tsx'); s = p.read_text()
+          s = s.replace("    pricing,\n", '')
+          if "import { useCms } from '../../cms/CmsContext';" not in s:
+              s = s.replace("import { PaymentMethod } from '../../types';", "import { PaymentMethod } from '../../types';\nimport { useCms } from '../../cms/CmsContext';")
+          marker = "  const {\n    isInstantOrderOpen,"
+          if marker not in s:
+              raise SystemExit('InstantOrderModal hook marker missing')
+          if 'const { banners } = useCms();' not in s:
+              s = s.replace(marker, "  const { banners } = useCms();\n  const {\n    isInstantOrderOpen,", 1)
+          old = """  const unitPrice =\n    thaliType === 'veg'\n      ? pricing.vegThaliInstant\n      : thaliType === 'egg'\n      ? pricing.eggThaliInstant\n      : pricing.nonVegThaliInstant;\n\n  const totalAmount = unitPrice * quantity;\n"""
+          new = """  const configuredRate = banners.find((b) => b.active && b.thali_key === thaliType)?.thali_rate || '';\n  const unitPrice = Number(configuredRate.replace(/[^0-9.]/g, '')) || 0;\n  const totalAmount = unitPrice;\n"""
+          if old in s:
+              s = s.replace(old, new)
+          elif 'const configuredRate' not in s:
+              raise SystemExit('Instant pricing calculation block missing')
+          p.write_text(s)
+
+          # Renewal is also a subscription price path: use the same configured Banner price.
+          p = Path('src/components/customer/RenewalModal.tsx'); s = p.read_text()
+          s = s.replace("    pricing,\n", '')
+          if "import { useCms } from '../../cms/CmsContext';" not in s:
+              s = s.replace("import { Subscription, SubscriptionDuration, PaymentMethod } from '../../types';", "import { Subscription, SubscriptionDuration, PaymentMethod } from '../../types';\nimport { useCms } from '../../cms/CmsContext';")
+          marker = "  const {\n    isRenewalModalOpen,"
+          if marker not in s:
+              raise SystemExit('RenewalModal hook marker missing')
+          if 'const { banners } = useCms();' not in s:
+              s = s.replace(marker, "  const { banners } = useCms();\n  const {\n    isRenewalModalOpen,", 1)
+          old_start = """  const basePrice =\n    activeSub.packageType === 'VEG CLASSIC'\n      ? pricing.vegMonthly\n      : activeSub.packageType === 'EGG DELIGHT'\n      ? pricing.eggMonthly\n      : pricing.nonVegMonthly;\n\n  const multiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;\n  const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 0.90 : 1.0;\n  const totalRenewalAmount = Math.round(basePrice * multiplier * discountFactor);\n"""
+          new_start = """  const selectedBanner = banners.find((b) => b.active && b.package_key === activeSub.packageType);\n  const configuredPriceText = selectedBanner?.highlight_price || 'Price not set';\n  const totalRenewalAmount = Number(configuredPriceText.replace(/[^0-9.]/g, '')) || 0;\n"""
+          if old_start in s:
+              s = s.replace(old_start, new_start)
+          elif 'const selectedBanner' not in s:
+              raise SystemExit('Renewal pricing calculation block missing')
+          # Remove UI that described automatic discount calculation; duration remains selectable for service validity.
+          s = s.replace("<div className=\"text-[10px] font-normal opacity-90 mt-0.5\">\n                        {d === '3 Months' ? '5% OFF' : d === '6 Months' ? '10% OFF' : 'Standard'}\n                      </div>", "")
+          s = re.sub(r"\s*\{duration !== '1 Month' && \(\s*<div className=\"flex justify-between text-xs text-emerald-600 font-semibold\">.*?</div>\s*\)", '', s, flags=re.S)
+          s = re.sub(r"\s*<div className=\"flex justify-between text-xs text-gray-600\">\s*<span>Base Monthly Rate:</span>.*?</div>", '', s, count=1, flags=re.S)
+          s = s.replace('Total Renewal Amount:', 'Configured Renewal Price:')
+          p.write_text(s)
+
+          # Hard guard: customer-facing components must not reference the legacy pricing context.
+          leftovers = []
+          for p in Path('src/components/customer').glob('*.tsx'):
+              text = p.read_text()
+              if 'pricing.' in text:
+                  leftovers.append(str(p))
+          if leftovers:
+              raise SystemExit('Legacy pricing references remain in: ' + ', '.join(leftovers))
+
       - name: Verify source and build
         run: |
           npm run lint
           npm test
           npm run build
+
       - name: Commit refactor and remove temporary workflow
         run: |
           git config user.name 'github-actions[bot]'
