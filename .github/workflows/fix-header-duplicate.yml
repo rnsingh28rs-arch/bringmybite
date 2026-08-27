@@ -1,0 +1,33 @@
+name: Fix verified Header duplicate
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove duplicate declaration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/common/Header.tsx')
+          s = p.read_text()
+          old = "    setActiveRole,\n    setIsRegistrationOpen,\n    setIsInstantOrderOpen,\n    setIsWeeklyMenuOpen,\n    setActiveRole\n"
+          new = "    setActiveRole,\n    setIsRegistrationOpen,\n    setIsInstantOrderOpen,\n    setIsWeeklyMenuOpen\n"
+          if s.count(old) != 1:
+              raise SystemExit(f'Unexpected Header declaration shape: {s.count(old)} matches')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          rm .github/workflows/fix-header-duplicate.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/common/Header.tsx .github/workflows/fix-header-duplicate.yml
+          git commit -m "fix: remove duplicate Header role declaration"
+          git push
