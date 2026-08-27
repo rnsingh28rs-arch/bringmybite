@@ -28,6 +28,26 @@ import { CalculatorWidget } from './components/common/CalculatorWidget';
 import { CmsProvider } from './cms/CmsContext';
 import { resolveStaffRoute } from './utils/staffRoute.mjs';
 
+const REDUNDANT_PANEL_TITLES = new Set([
+  'D-ADMIN DESIGNER',
+  'CEO Cum Director Control Centre',
+  'Master Admin Dashboard (/admin)',
+  'Shree Foods Executive & Governance Console',
+  'Kitchen Operations & Inventory Manager',
+  'Manager Operations & Stock Control',
+  'Kitchen Operational Hub',
+  'Chef Kitchen Operations & Indents'
+]);
+
+function removeRedundantPanelTitles() {
+  const candidates = document.querySelectorAll<HTMLElement>('h1, h2, h3, span, p, div');
+  candidates.forEach((element) => {
+    if (element.children.length === 0 && REDUNDANT_PANEL_TITLES.has(element.textContent?.trim() || '')) {
+      element.style.display = 'none';
+    }
+  });
+}
+
 const MainContent: React.FC = () => {
   const { activeRole, setActiveRole } = useApp();
   const [locationKey, setLocationKey] = useState(() => window.location.href);
@@ -42,7 +62,30 @@ const MainContent: React.FC = () => {
     };
   }, []);
 
-  const access = resolveStaffRoute(window.location.pathname, window.location.hash);
+  useEffect(() => {
+    const handleWebsiteNavigation = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const control = target?.closest('button, a') as HTMLElement | null;
+      const label = control?.textContent?.replace(/\s+/g, ' ').trim().toLowerCase() || '';
+      if (label.includes('exit to website') || label.includes('back to website')) {
+        event.preventDefault();
+        event.stopPropagation();
+        window.location.assign('/');
+      }
+    };
+
+    document.addEventListener('click', handleWebsiteNavigation, true);
+    return () => document.removeEventListener('click', handleWebsiteNavigation, true);
+  }, []);
+
+  useEffect(() => {
+    removeRedundantPanelTitles();
+    const observer = new MutationObserver(() => removeRedundantPanelTitles());
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [locationKey]);
+
+  const access = resolveStaffRoute(window.location.pathname);
   const role = access?.role ?? 'customer';
 
   useEffect(() => {
