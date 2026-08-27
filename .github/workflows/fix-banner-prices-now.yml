@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/fix-banner-prices-now.yml'
+      - 'src/context/AppContext.tsx'
+      - 'src/cms/CmsContext.tsx'
+      - 'src/components/customer/**'
 
 permissions:
   contents: write
@@ -20,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Make Banner the single pricing source
+      - name: Make Banner the single source of truth
         shell: python
         run: |
           from pathlib import Path
@@ -29,116 +32,80 @@ jobs:
           def read(p): return Path(p).read_text()
           def write(p, s): Path(p).write_text(s)
 
-          # 1) CMS: keep the legacy pricing object only as a compatibility projection of Banner rows.
-          #    No customer-facing price may come from bmb_pricing independently.
-          p = Path('src/cms/CmsContext.tsx'); s = read(p)
-          old = "const nextSettings = { ...DEFAULT_SITE_SETTINGS, ...asRecord(settingsRows) }, nextPricing = { ...DEFAULT_PRICING, ...Object.fromEntries(pricingRows.map(r => [r.key, Number(r.value)])) }, nextMenus = menuRows.length ? { ...DEFAULT_MENUS, ...Object.fromEntries(menuRows.map(r => [r.package_type, r.menu])) } : DEFAULT_MENUS;"
-          new = "const nextSettings = { ...DEFAULT_SITE_SETTINGS, ...asRecord(settingsRows) }, nextPricing = { ...DEFAULT_PRICING, ...Object.fromEntries(pricingRows.map(r => [r.key, Number(r.value)])) }, nextMenus = menuRows.length ? { ...DEFAULT_MENUS, ...Object.fromEntries(menuRows.map(r => [r.package_type, r.menu])) } : DEFAULT_MENUS;"
-          if old not in s: raise SystemExit('CmsContext pricing loader shape changed; refusing unsafe edit')
-          # Keep CMS pricing available for non-customer legacy consumers, but all customer pricing is explicitly Banner-driven below.
-          write(p, s)
+          # The existing Banner rows already hold the authoritative values:
+          # highlight_price for subscriptions and thali_rate for Instant Thali.
+          # Project those Banner values through AppContext so all customer
+          # components consuming `pricing` receive the Banner values.
+          p = Path('src/context/AppContext.tsx')
+          s = read(p)
+          old = "const vegMenu=cms.menus['VEG CLASSIC'],eggMenu=cms.menus['EGG DELIGHT'],nonVegMenu=cms.menus['NON-VEG CLUB'],pricing=cms.pricing;"
+          new = """const vegMenu=cms.menus['VEG CLASSIC'],eggMenu=cms.menus['EGG DELIGHT'],nonVegMenu=cms.menus['NON-VEG CLUB'];
+          const bannerNumber=(value: string | number | undefined, fallback: number)=>{const n=Number(String(value??'').replace(/[^0-9.]/g,''));return Number.isFinite(n)&&n>=0?n:fallback;};
+          const vegBanner=cms.banners.find(b=>b.active&&b.package_key==='VEG CLASSIC');
+          const eggBanner=cms.banners.find(b=>b.active&&b.package_key==='EGG DELIGHT');
+          const nonVegBanner=cms.banners.find(b=>b.active&&b.package_key==='NON-VEG CLUB');
+          const vegThaliBanner=cms.banners.find(b=>b.active&&b.thali_key==='veg');
+          const eggThaliBanner=cms.banners.find(b=>b.active&&b.thali_key==='egg');
+          const nonVegThaliBanner=cms.banners.find(b=>b.active&&b.thali_key==='non-veg');
+          const pricing:PlanPricing={
+            vegMonthly:bannerNumber(vegBanner?.highlight_price,cms.pricing.vegMonthly),
+            eggMonthly:bannerNumber(eggBanner?.highlight_price,cms.pricing.eggMonthly),
+            nonVegMonthly:bannerNumber(nonVegBanner?.highlight_price,cms.pricing.nonVegMonthly),
+            vegThaliInstant:bannerNumber(vegThaliBanner?.thali_rate,cms.pricing.vegThaliInstant),
+            eggThaliInstant:bannerNumber(eggThaliBanner?.thali_rate,cms.pricing.eggThaliInstant),
+            nonVegThaliInstant:bannerNumber(nonVegThaliBanner?.thali_rate,cms.pricing.nonVegThaliInstant)
+          };"""
+          if old not in s:
+              raise SystemExit('AppContext pricing anchor changed; refusing unsafe edit')
+          s=s.replace(old,new,1)
+          write(p,s)
 
-          # 2) Instant Thali: Banner thali_rate is the final selling price. Quantity is an order selection only.
-          p = Path('src/components/customer/InstantOrderModal.tsx'); s = read(p)
-          if "import { useCms } from '../../cms/CmsContext';" not in s:
-              s = s.replace("import { PaymentMethod } from '../../types';", "import { PaymentMethod } from '../../types';\nimport { useCms } from '../../cms/CmsContext';", 1)
-          s = s.replace("    pricing,\n", "", 1)
+          # Instant order: displayed/product price comes from Banner; quantity
+          # remains an order selection and must not rewrite the unit price.
+          p=Path('src/components/customer/InstantOrderModal.tsx'); s=read(p)
           if "const { banners } = useCms();" not in s:
-              marker = "export const InstantOrderModal: React.FC = () => {\n"
-              s = s.replace(marker, marker + "  const { banners } = useCms();\n", 1)
-          s = re.sub(r"\n  const unitPrice =.*?\n  const thaliDisplayName =", "\n  const configuredRate = banners.find((b) => b.active && b.thali_key === thaliType)?.thali_rate || '';\n  const unitPrice = Number(String(configuredRate).replace(/[^0-9.]/g, '')) || 0;\n  const totalAmount = unitPrice;\n  const thaliDisplayName =", s, count=1, flags=re.S)
-          s = re.sub(r"\n  const totalAmount = unitPrice \* quantity;", "", s, count=1)
-          s = s.replace('pricing.vegThaliInstant', "Number(String(banners.find((b) => b.active && b.thali_key === 'veg')?.thali_rate || '').replace(/[^0-9.]/g, '')) || 0")
-          s = s.replace('pricing.eggThaliInstant', "Number(String(banners.find((b) => b.active && b.thali_key === 'egg')?.thali_rate || '').replace(/[^0-9.]/g, '')) || 0")
-          s = s.replace('pricing.nonVegThaliInstant', "Number(String(banners.find((b) => b.active && b.thali_key === 'non-veg')?.thali_rate || '').replace(/[^0-9.]/g, '')) || 0")
-          if 'pricing.' in s: raise SystemExit('InstantOrderModal still contains legacy pricing reference')
-          write(p, s)
-
-          # 3) Subscription registration: Banner highlight_price is the final amount. Duration never changes it.
-          p = Path('src/components/customer/RegistrationModal.tsx'); s = read(p)
-          if "import { useCms } from '../../cms/CmsContext';" not in s:
-              # Already present in current source; this is a guard for future shape changes.
-              s = s.replace("import { PaymentMethod } from '../../types';", "import { PaymentMethod } from '../../types';\nimport { useCms } from '../../cms/CmsContext';", 1)
-          s = s.replace("    pricing,\n", "", 1)
-          if "const { banners } = useCms();" not in s:
-              marker = "export const RegistrationModal: React.FC = () => {\n"
-              s = s.replace(marker, marker + "  const { banners } = useCms();\n", 1)
-          s = re.sub(r"\n  // Calculate monthly & total price\n.*?\n  const getPackageCode =", "\n  const selectedBanner = banners.find((b) => b.active && b.package_key === packageType);\n  const configuredPriceText = selectedBanner?.highlight_price || '';\n  const configuredAmount = Number(String(configuredPriceText).replace(/[^0-9.]/g, '')) || 0;\n\n  const getPackageCode =", s, count=1, flags=re.S)
-          s = s.replace('baseMonthlyPrice', 'configuredAmount').replace('calculatedTotal', 'configuredAmount')
-          if 'pricing.' in s: raise SystemExit('RegistrationModal still contains legacy pricing reference')
-          write(p, s)
-
-          # 4) Renewal: same Banner price; no duration multiplier/discount.
-          p = Path('src/components/customer/RenewalModal.tsx'); s = read(p)
-          if "import { useCms } from '../../cms/CmsContext';" not in s:
-              s = s.replace("import { Subscription, SubscriptionDuration, PaymentMethod } from '../../types';", "import { Subscription, SubscriptionDuration, PaymentMethod } from '../../types';", 1)
-              # If import shape differs, add beside existing imports.
               if "import { useCms } from '../../cms/CmsContext';" not in s:
-                  s = s.replace("import React", "import { useCms } from '../../cms/CmsContext';\nimport React", 1)
-          s = s.replace("    pricing,\n", "", 1)
+                  s=s.replace("import { PaymentMethod } from '../../types';","import { PaymentMethod } from '../../types';\nimport { useCms } from '../../cms/CmsContext';",1)
+              s=s.replace("export const InstantOrderModal: React.FC = () => {","export const InstantOrderModal: React.FC = () => {\n  const { banners } = useCms();",1)
+          s=s.replace("    pricing,\n", "", 1)
+          s=re.sub(r"\n  const unitPrice =.*?\n  const thaliDisplayName =", "\n  const configuredRate = banners.find((b) => b.active && b.thali_key === thaliType)?.thali_rate || '';\n  const unitPrice = Number(String(configuredRate).replace(/[^0-9.]/g, '')) || 0;\n  const totalAmount = unitPrice;\n  const thaliDisplayName =", s, count=1, flags=re.S)
+          s=re.sub(r"\n  const totalAmount = unitPrice \* quantity;", "", s, count=1)
+          s=s.replace('pricing.vegThaliInstant',"Number(String(banners.find((b) => b.active && b.thali_key === 'veg')?.thali_rate || '').replace(/[^0-9.]/g, '')) || 0")
+          s=s.replace('pricing.eggThaliInstant',"Number(String(banners.find((b) => b.active && b.thali_key === 'egg')?.thali_rate || '').replace(/[^0-9.]/g, '')) || 0")
+          s=s.replace('pricing.nonVegThaliInstant',"Number(String(banners.find((b) => b.active && b.thali_key === 'non-veg')?.thali_rate || '').replace(/[^0-9.]/g, '')) || 0")
+          if 'pricing.' in s: raise SystemExit('InstantOrderModal still contains legacy pricing references')
+          write(p,s)
+
+          # Registration: exact Banner highlight_price, with no duration formula.
+          p=Path('src/components/customer/RegistrationModal.tsx'); s=read(p)
+          s=s.replace("    pricing,\n", "", 1)
           if "const { banners } = useCms();" not in s:
-              marker = "export const RenewalModal: React.FC = () => {\n"
-              s = s.replace(marker, marker + "  const { banners } = useCms();\n", 1)
-          s = re.sub(r"\n  const basePrice =.*?\n  const totalRenewalAmount = Math\.round\(basePrice \* multiplier \* discountFactor\);", "\n  const selectedBanner = banners.find((b) => b.active && b.package_key === activeSub.packageType);\n  const configuredPriceText = selectedBanner?.highlight_price || '';\n  const totalRenewalAmount = Number(String(configuredPriceText).replace(/[^0-9.]/g, '')) || 0;", s, count=1, flags=re.S)
-          s = re.sub(r"\s*\{duration !== '1 Month' && \(\s*<div className=\"flex justify-between text-xs text-emerald-600 font-semibold\">.*?</div>\s*\)", '', s, flags=re.S)
-          s = re.sub(r"\s*<div className=\"flex justify-between text-xs text-gray-600\">\s*<span>Base Monthly Rate:</span>.*?</div>", '', s, count=1, flags=re.S)
-          s = s.replace('Total Renewal Amount:', 'Configured Renewal Price:')
-          if 'pricing.' in s: raise SystemExit('RenewalModal still contains legacy pricing reference')
-          write(p, s)
+              s=s.replace("export const RegistrationModal: React.FC = () => {","export const RegistrationModal: React.FC = () => {\n  const { banners } = useCms();",1)
+          s=re.sub(r"\n  // Calculate monthly & total price\n.*?\n  const getPackageCode =", "\n  const selectedBanner=banners.find((b)=>b.active&&b.package_key===packageType);\n  const configuredAmount=Number(String(selectedBanner?.highlight_price||'').replace(/[^0-9.]/g,''))||0;\n\n  const getPackageCode =", s, count=1, flags=re.S)
+          s=s.replace('baseMonthlyPrice','configuredAmount').replace('calculatedTotal','configuredAmount')
+          if 'pricing.' in s: raise SystemExit('RegistrationModal still contains legacy pricing references')
+          write(p,s)
 
-          # 5) Package cards: always read exact Banner values.
-          p = Path('src/components/customer/PackagesSection.tsx'); s = read(p)
-          if "import { useCms } from '../../cms/CmsContext';" not in s:
-              s = s.replace("import { useApp } from '../../context/AppContext';", "import { useApp } from '../../context/AppContext';\nimport { useCms } from '../../cms/CmsContext';", 1)
-          s = s.replace("    pricing,\n", "", 1)
-          if 'const { banners } = useCms();' not in s:
-              marker = "export const PackagesSection: React.FC = () => {\n"
-              s = s.replace(marker, marker + "  const { banners } = useCms();\n", 1)
-          if 'const packagePrice' not in s:
-              marker = "  const {"
-              # Prefer the first hook closing; insert helper after useApp destructure.
-              idx = s.find("  } = useApp();")
-              if idx >= 0:
-                  end = idx + len("  } = useApp();")
-                  helper = "\n  const packagePrice = (key: PackageType) => banners.find((b) => b.active && b.package_key === key)?.highlight_price || 'Price not set';\n  const instantPrice = (key: 'veg' | 'egg' | 'non-veg') => banners.find((b) => b.active && b.thali_key === key)?.thali_rate || 'Price not set';"
-                  s = s[:end] + helper + s[end:]
-          replacements = {
-              '₹{pricing.vegMonthly.toLocaleString()}': "{packagePrice('VEG CLASSIC')}",
-              '₹{pricing.eggMonthly.toLocaleString()}': "{packagePrice('EGG DELIGHT')}",
-              '₹{pricing.nonVegMonthly.toLocaleString()}': "{packagePrice('NON-VEG CLUB')}",
-              '₹{pricing.vegThaliInstant}': "{instantPrice('veg')}",
-              '₹{pricing.eggThaliInstant}': "{instantPrice('egg')}",
-              '₹{pricing.nonVegThaliInstant}': "{instantPrice('non-veg')}"
-          }
-          for a,b in replacements.items(): s=s.replace(a,b)
-          if 'pricing.' in s: raise SystemExit('PackagesSection still contains legacy pricing reference')
-          write(p, s)
+          # Renewal: exact Banner highlight_price; duration does not multiply it.
+          p=Path('src/components/customer/RenewalModal.tsx'); s=read(p)
+          s=s.replace("    pricing,\n", "", 1)
+          if "const { banners } = useCms();" not in s:
+              if "import { useCms } from '../../cms/CmsContext';" not in s:
+                  s=s.replace("import React","import { useCms } from '../../cms/CmsContext';\nimport React",1)
+              s=s.replace("export const RenewalModal: React.FC = () => {","export const RenewalModal: React.FC = () => {\n  const { banners } = useCms();",1)
+          s=re.sub(r"\n  const basePrice =.*?\n  const totalRenewalAmount = Math\.round\(basePrice \* multiplier \* discountFactor\);", "\n  const selectedBanner=banners.find((b)=>b.active&&b.package_key===activeSub.packageType);\n  const totalRenewalAmount=Number(String(selectedBanner?.highlight_price||'').replace(/[^0-9.]/g,''))||0;", s, count=1, flags=re.S)
+          if 'pricing.' in s: raise SystemExit('RenewalModal still contains legacy pricing references')
+          write(p,s)
 
-          # 6) Hero: every visible Thali price comes from Banner thali_rate.
-          p = Path('src/components/customer/HeroBanner.tsx'); s = read(p)
-          s = s.replace("    pricing,\n", "", 1)
-          if "const getThaliRate" not in s:
-              marker = "  const cms = useCms();"
-              if marker in s:
-                  s = s.replace(marker, marker + "\n  const getThaliRate = (type: 'veg' | 'egg' | 'non-veg') => cms.banners.find((b) => b.active && b.thali_key === type)?.thali_rate || 'Price not set';", 1)
-          s = s.replace('pricing.vegThaliInstant', "getThaliRate('veg')")
-          s = s.replace('pricing.eggThaliInstant', "getThaliRate('egg')")
-          s = s.replace('pricing.nonVegThaliInstant', "getThaliRate('non-veg')")
-          s = re.sub(r"dishHighlights: \['Veg Thali \(₹80\)', 'Egg Thali \(₹100\)', 'Non-Veg Thali \(₹110\)', 'Steaming Hot Gate Drop'\]", "dishHighlights: ['Veg Thali', 'Egg Thali', 'Non-Veg Thali', 'Steaming Hot Gate Drop']", s)
-          if 'pricing.' in s: raise SystemExit('HeroBanner still contains legacy pricing reference')
-          write(p, s)
+          # Package/hero displays consume AppContext pricing, which is now Banner-projected.
+          # Remove only any direct customer pricing source left in these key files.
+          for name in ['PackagesSection.tsx','HeroBanner.tsx']:
+              p=Path('src/components/customer')/name
+              s=read(p)
+              if 'pricing.' in s:
+                  raise SystemExit(f'{name} still contains a direct legacy pricing reference')
 
-          # 7) Verify customer-facing source has no pricing.* reads and no pricing multipliers for these flows.
-          customer_files = list(Path('src/components/customer').glob('*.tsx'))
-          bad = []
-          for p in customer_files:
-              text = read(p)
-              if 'pricing.' in text:
-                  bad.append(f'{p}: pricing.')
-          if bad:
-              raise SystemExit('Legacy customer pricing references remain:\n' + '\n'.join(bad))
-
-      - name: Test and build
+      - name: Test
         run: |
           npm run lint
           npm test
@@ -149,11 +116,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src
-          git commit -m 'fix: make banner the single source for thali and subscription prices [skip banner repair]' || echo 'No source changes to commit'
-          git push origin main
-
-      - name: Remove repair trigger
-        run: |
-          git rm .github/workflows/fix-banner-prices-now.yml
-          git commit -m 'chore: remove temporary banner price repair workflow [skip banner repair]'
+          git commit -m 'fix: route all customer pricing through banner values [skip banner repair]' || echo 'No source changes to commit'
           git push origin main
