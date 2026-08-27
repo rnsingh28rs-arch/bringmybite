@@ -1,7 +1,7 @@
 import { isSupabaseConfigured, supabaseSelect, supabaseInsert, supabasePatch, supabaseRpc } from '../cms/supabaseRest';
 
 export type StoredOrderKind = 'instant' | 'subscription';
-export type StoredOrderStatus = 'Pending Verification' | 'Confirmed' | 'Preparing' | 'Dispatched' | 'Delivered' | 'Cancelled' | 'Rejected';
+export type StoredOrderStatus = 'Pending Verification' | 'Approved' | 'Confirmed' | 'Preparing' | 'Dispatched' | 'Delivered' | 'Declined' | 'Cancelled' | 'Rejected';
 
 export interface StoredOrder {
   id: string;
@@ -27,6 +27,18 @@ function readLocal(): StoredOrder[] {
 }
 function writeLocal(rows: StoredOrder[]) { localStorage.setItem(KEY, JSON.stringify(rows)); window.dispatchEvent(new Event('bmb-order-request-change')); }
 
+function toUiStatus(status: string): StoredOrderStatus {
+  if (status === 'Confirmed') return 'Approved';
+  if (status === 'Rejected') return 'Declined';
+  return status as StoredOrderStatus;
+}
+
+function toDbStatus(status: string): string {
+  if (status === 'Approved') return 'Confirmed';
+  if (status === 'Declined') return 'Rejected';
+  return status;
+}
+
 export async function addStoredOrder(order: StoredOrder): Promise<StoredOrder> {
   if (isSupabaseConfigured) {
     await supabaseInsert('bmb_orders', toDb(order) as any);
@@ -44,24 +56,24 @@ export async function getStoredOrders(): Promise<StoredOrder[]> {
     const rows = await supabaseSelect<any>('bmb_orders', 'select=*&order=created_at.desc');
     return rows.map(normalizeRow);
   }
-  return readLocal();
+  return readLocal().map(o => ({ ...o, status: toUiStatus(o.status) }));
 }
 
 export async function updateStoredOrder(id: string, patch: Partial<StoredOrder>): Promise<void> {
   if (isSupabaseConfigured) {
     await supabasePatch('bmb_orders', `id=eq.${encodeURIComponent(id)}`, toDbPatch(patch) as any);
   }
-  const rows = readLocal().map(o => o.id === id ? { ...o, ...patch, updatedAt: new Date().toISOString() } : o);
+  const rows = readLocal().map(o => o.id === id ? { ...o, ...patch, status: patch.status !== undefined ? toUiStatus(patch.status) : o.status, updatedAt: new Date().toISOString() } : o);
   writeLocal(rows);
 }
 
 function toDb(order: StoredOrder) {
-  return { id: order.id, kind: order.kind, customer_name: order.customerName, phone: order.phone, whatsapp: order.whatsapp || '', plan_or_meal: order.planOrMeal, amount: order.amount, utr_number: order.utrNumber, payment_slip: order.paymentSlip || null, payment_status: order.paymentStatus, status: order.status, details: order.details || '', created_at: order.createdAt, updated_at: order.updatedAt };
+  return { id: order.id, kind: order.kind, customer_name: order.customerName, phone: order.phone, whatsapp: order.whatsapp || '', plan_or_meal: order.planOrMeal, amount: order.amount, utr_number: order.utrNumber, payment_slip: order.paymentSlip || null, payment_status: order.paymentStatus, status: toDbStatus(order.status), details: order.details || '', created_at: order.createdAt, updated_at: order.updatedAt };
 }
 function toDbPatch(patch: Partial<StoredOrder>) {
   const out: Record<string, unknown> = {};
   if (patch.paymentStatus !== undefined) out.payment_status = patch.paymentStatus;
-  if (patch.status !== undefined) out.status = patch.status;
+  if (patch.status !== undefined) out.status = toDbStatus(patch.status);
   if (patch.details !== undefined) out.details = patch.details;
   if (patch.paymentSlip !== undefined) out.payment_slip = patch.paymentSlip;
   out.updated_at = new Date().toISOString();
@@ -79,7 +91,7 @@ function normalizeRow(row: any): StoredOrder {
     utrNumber: row.utr_number ?? row.utrNumber ?? '',
     paymentSlip: row.payment_slip ?? row.paymentSlip,
     paymentStatus: row.payment_status ?? row.paymentStatus ?? 'Pending Verification',
-    status: row.status ?? 'Pending Verification',
+    status: toUiStatus(row.status ?? 'Pending Verification'),
     details: row.details ?? '',
     createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
     updatedAt: row.updated_at ?? row.updatedAt ?? new Date().toISOString()
