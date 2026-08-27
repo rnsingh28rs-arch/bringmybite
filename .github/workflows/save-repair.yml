@@ -64,4 +64,5 @@ jobs:
           git add src .github/workflows/save-repair.yml
           git rm .github/workflows/save-repair.yml
           git commit -m 'fix: make panel saves await persistence [skip save repair]'
+          git pull --rebase origin main
           git push origin main
