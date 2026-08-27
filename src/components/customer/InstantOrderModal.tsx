@@ -113,56 +113,101 @@ export const InstantOrderModal: React.FC = () => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customerName.trim() || !mobileNumber.trim() || !locationDetail.trim()) {
-      alert('Please fill in your name, contact number, and delivery gate location.');
-      return;
-    }
-    if (!transactionId.trim()) { alert('Please enter the UTR / transaction reference.'); return; }
-    if (!paymentSlip) { alert('Please attach the payment screenshot / receipt.'); return; }
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    const order = addInstantOrder({
+  if (!customerName.trim() || !mobileNumber.trim() || !locationDetail.trim()) {
+    alert('Please fill in your name, contact number, and delivery gate location.');
+    return;
+  }
+
+  if (!transactionId.trim()) {
+    alert('Please enter the UTR / transaction reference.');
+    return;
+  }
+
+  if (!paymentSlip) {
+    alert('Please attach the payment screenshot / receipt.');
+    return;
+  }
+
+  const order = addInstantOrder({
+    customerName,
+    customerPhone: mobileNumber,
+    thaliType,
+    thaliName: thaliDisplayName,
+    quantity,
+    unitPrice,
+    totalPrice: totalAmount,
+    mealSlot: slot,
+    deliveryCategory:
+      deliveryPointType === 'college'
+        ? 'College Student'
+        : deliveryPointType === 'office'
+        ? 'Working Professional'
+        : 'Other',
+    deliveryLocation:
+      deliveryPointType === 'college'
+        ? `College Gate: ${locationDetail}`
+        : deliveryPointType === 'office'
+        ? `Office Gate/Reception: ${locationDetail}`
+        : `Home Address: ${locationDetail}`,
+    specificInstructions: specialInstructions || undefined,
+    paymentMethod,
+    paymentStatus: 'Pending Verification'
+  });
+
+  /*
+   * IMPORTANT:
+   * Do not show success until the UTR and payment screenshot
+   * have actually been persisted to the central database.
+   */
+  try {
+    await addStoredOrder({
+      id: order.id,
+      kind: 'instant',
       customerName,
-      customerPhone: mobileNumber,
-      thaliType,
-      thaliName: thaliDisplayName,
-      quantity,
-      unitPrice,
-      totalPrice: totalAmount,
-      mealSlot: slot,
-      deliveryCategory: deliveryPointType === 'college' ? 'College Student' : deliveryPointType === 'office' ? 'Working Professional' : 'Other',
-      deliveryLocation:
-        deliveryPointType === 'college'
-          ? `College Gate: ${locationDetail}`
-          : deliveryPointType === 'office'
-          ? `Office Gate/Reception: ${locationDetail}`
-          : `Home Address: ${locationDetail}`,
-      specificInstructions: specialInstructions || undefined,
-      paymentMethod,
-      paymentStatus: 'Pending Verification'
+      phone: mobileNumber,
+      planOrMeal: `${quantity}x ${thaliDisplayName} (${slot})`,
+      amount: totalAmount,
+      utrNumber: transactionId.trim(),
+      paymentSlip,
+      paymentStatus: 'Pending Verification',
+      status: 'Pending Verification',
+      details:
+        `${deliveryPointType}: ${locationDetail}` +
+        `${mapLocationUrl ? ` | Current GPS: ${mapLocationUrl}` : ''}` +
+        `${specialInstructions ? ` | ${specialInstructions}` : ''}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
 
-    saveLastOrderTracking({ id: order.id, phone: mobileNumber });
-
-    void addStoredOrder({
-      id: order.id, kind: 'instant', customerName, phone: mobileNumber, planOrMeal: `${quantity}x ${thaliDisplayName} (${slot})`,
-      amount: totalAmount, utrNumber: transactionId.trim(), paymentSlip, paymentStatus: 'Pending Verification', status: 'Pending Verification',
-      details: `${deliveryPointType}: ${locationDetail}${mapLocationUrl ? ` | Current GPS: ${mapLocationUrl}` : ''}${specialInstructions ? ` | ${specialInstructions}` : ''}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+    saveLastOrderTracking({
+      id: order.id,
+      phone: mobileNumber
     });
+  } catch (error) {
+    console.error('Instant order persistence failed:', error);
 
-    try {
-      confetti({
-        particleCount: 50,
-        spread: 60,
-        origin: { y: 0.7 }
-      });
-    } catch (err) {
-      // safe fallback
-    }
+    alert(
+      'Your payment proof could not be saved. Please check your connection and submit again.'
+    );
 
-    setPlacedOrder(order);
-  };
+    return;
+  }
+
+  try {
+    confetti({
+      particleCount: 50,
+      spread: 60,
+      origin: { y: 0.7 }
+    });
+  } catch (error) {
+    // Confetti failure must never affect order submission.
+  }
+
+  setPlacedOrder(order);
+};
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
