@@ -653,4 +653,3 @@ export const InstantOrderModal: React.FC = () => {
       </div>
     </div>
   );
-};
