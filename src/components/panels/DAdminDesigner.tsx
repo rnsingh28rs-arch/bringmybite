@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useCms, PanelConfig, RoleConfig, PermissionConfig } from '../../cms/CmsContext';
 import { BannerConfig, RegistrationFieldConfig } from '../../cms/cmsDefaults';
 import { PackageType } from '../../types';
-import { signOut } from '../../cms/supabaseRest';
 import { Save, Plus, Trash2, ShieldCheck, LayoutDashboard, Image, Utensils, IndianRupee, FileText, CreditCard, Settings, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { StaffFinancePanel } from './StaffFinancePanel';
 import { GSTBillingPanel } from './GSTBillingPanel';
@@ -41,7 +40,7 @@ export const DAdminDesigner: React.FC = () => {
               {cms.connected ? '● Supabase connected' : '● Local preview mode'}
             </span>
             <button onClick={() => cms.refresh()} className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20" title="Refresh central data"><RefreshCw className="w-4 h-4" /></button>
-            {<button onClick={() => { signOut(); window.location.assign('/'); }} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold">Logout</button>}
+            <button onClick={() => window.location.assign('/')} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold">Exit to Website</button>
           </div>
         </header>
 
@@ -175,11 +174,11 @@ function Access({ cms, selectedRole, setSelectedRole, newPanel, setNewPanel, new
 
     <div className={card}>
       <h3 className="font-black text-[#124E33]">Admin Accounts & Role Assignment</h3>
-      <p className="text-xs text-gray-500 mt-1">Create the user in Supabase Authentication first, then enter that user's UUID and assign a role here.</p>
+      <p className="text-xs text-gray-500 mt-1">Staff records here are for role and permission management. Direct panel access is resolved by the URL PIN; no Supabase Auth account is required.</p>
       <div className="grid md:grid-cols-3 gap-2 mt-4">
-        <input id="admin-user-id" className={input} placeholder="Supabase Auth User UUID" />
-        <input id="admin-user-email" className={input} placeholder="Email" type="email" />
-        <div className="flex gap-2"><select id="admin-user-role" className={input}>{cms.roles.map((r: RoleConfig) => <option key={r.id} value={r.id}>{r.name}</option>)}</select><button onClick={async () => { const userId = (document.getElementById('admin-user-id') as HTMLInputElement).value.trim(); const email = (document.getElementById('admin-user-email') as HTMLInputElement).value.trim(); const roleId = (document.getElementById('admin-user-role') as HTMLSelectElement).value; if (!userId || !email) return alert('Enter the Auth User UUID and email.'); await cms.saveAdminUser({ user_id: userId, email, role_id: roleId, active: true }); flash('Admin account assigned'); }} className="px-3 rounded-xl bg-amber-500 font-bold"><Plus className="w-4 h-4" /></button></div>
+        <input id="admin-user-id" className={input} placeholder="Staff User ID (unique)" />
+        <input id="admin-user-email" className={input} placeholder="Contact / email" type="text" />
+        <div className="flex gap-2"><select id="admin-user-role" className={input}>{cms.roles.map((r: RoleConfig) => <option key={r.id} value={r.id}>{r.name}</option>)}</select><button onClick={async () => { const userId = (document.getElementById('admin-user-id') as HTMLInputElement).value.trim(); const email = (document.getElementById('admin-user-email') as HTMLInputElement).value.trim(); const roleId = (document.getElementById('admin-user-role') as HTMLSelectElement).value; if (!userId) return alert('Enter a unique Staff User ID.'); await cms.saveAdminUser({ user_id: userId, email: email || userId, role_id: roleId, active: true }); flash('Staff account assigned'); }} className="px-3 rounded-xl bg-amber-500 font-bold"><Plus className="w-4 h-4" /></button></div>
       </div>
       <div className="space-y-2 mt-4">{cms.adminUsers.map((u: any) => <div key={u.user_id} className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-gray-50 text-sm"><span className="flex-1 font-bold">{u.email}</span><span className="px-2 py-1 rounded-lg bg-white text-xs">{cms.roles.find((r: RoleConfig) => r.id === u.role_id)?.name || u.role_id}</span><button onClick={async () => { await cms.deleteAdminUser(u.user_id); flash('Admin account removed'); }} className="text-rose-600"><Trash2 className="w-4 h-4" /></button></div>)}</div>
     </div>

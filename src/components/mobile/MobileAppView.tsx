@@ -785,7 +785,7 @@ export const MobileAppView: React.FC<MobileAppViewProps> = ({ platform }) => {
 
             <div className="space-y-2">
               <button
-                onClick={() => setActiveRole('chef')}
+                onClick={() => window.location.assign('/admin#665511')}
                 className="w-full p-3.5 bg-white rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between text-left hover:border-emerald-600 transition-colors"
               >
                 <div>
@@ -796,7 +796,7 @@ export const MobileAppView: React.FC<MobileAppViewProps> = ({ platform }) => {
               </button>
 
               <button
-                onClick={() => setActiveRole('manager')}
+                onClick={() => window.location.assign('/admin#556611')}
                 className="w-full p-3.5 bg-white rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between text-left hover:border-emerald-600 transition-colors"
               >
                 <div>
@@ -807,7 +807,7 @@ export const MobileAppView: React.FC<MobileAppViewProps> = ({ platform }) => {
               </button>
 
               <button
-                onClick={() => setActiveRole('admin')}
+                onClick={() => window.location.assign('/admin#115566')}
                 className="w-full p-3.5 bg-white rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between text-left hover:border-emerald-600 transition-colors"
               >
                 <div>

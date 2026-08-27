@@ -11,9 +11,8 @@ export interface StaffRoleConfig {
   pin: string;
 }
 
-// Public UI metadata only. Authentication credentials are NEVER stored in the
-// frontend bundle. Staff sign in through Supabase Auth and their role is read
-// from public.bmb_admin_users after authentication.
+// Public UI metadata only. Direct staff access is resolved by src/utils/staffRoute.mjs.
+// No Supabase Auth credentials are stored or required by the staff panels.
 const noCredential = { email: '', defaultPasscode: '', pin: '' };
 
 export const STAFF_CREDENTIALS: Record<'admin' | 'manager' | 'chef', StaffRoleConfig> = {

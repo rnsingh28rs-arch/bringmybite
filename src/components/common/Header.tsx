@@ -19,7 +19,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateSection }) => {
     setIsRegistrationOpen,
     setIsInstantOrderOpen,
     setIsWeeklyMenuOpen,
-    openStaffLogin
+    setActiveRole
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -216,12 +216,12 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateSection }) => {
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  openStaffLogin('admin');
+                  window.location.assign('/admin#115566');
                 }}
                 className="text-[11px] text-gray-500 hover:text-gray-800 flex items-center justify-center gap-1 mx-auto"
               >
                 <Lock className="w-3 h-3" />
-                <span>Authorized Staff Login</span>
+                <span>Staff Portal</span>
               </button>
             </div>
           </div>

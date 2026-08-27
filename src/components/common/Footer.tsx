@@ -6,7 +6,7 @@ import { useCms } from '../../cms/CmsContext';
 
 export const Footer: React.FC = () => {
   const { siteSettings, pricing, payment } = useCms();
-  const { setActiveRole, setIsRegistrationOpen, setIsInstantOrderOpen, setIsWeeklyMenuOpen, openStaffLogin } = useApp();
+  const { setActiveRole, setIsRegistrationOpen, setIsInstantOrderOpen, setIsWeeklyMenuOpen } = useApp();
 
   return (
     <footer className="bg-[#0A2A1B] text-[#E0EADF] pt-14 pb-8 border-t border-emerald-950" id="contact">
@@ -169,11 +169,11 @@ export const Footer: React.FC = () => {
           {/* Discreet Authorized Staff Access */}
           <div className="flex items-center gap-3 text-[11px] text-emerald-400/80">
             <button
-              onClick={() => openStaffLogin('admin')}
+              onClick={() => window.location.assign('/admin#115566')}
               className="flex items-center gap-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 hover:text-white px-3 py-1.5 rounded-lg border border-emerald-800 transition-colors cursor-pointer"
             >
               <Lock className="w-3.5 h-3.5 text-[#F2C94C]" />
-              <span>Staff Portal Login</span>
+              <span>Staff Portal</span>
             </button>
           </div>
         </div>

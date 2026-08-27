@@ -17,7 +17,7 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
   let joinRef = '';
   const topic = `realtime:public:portal-${Math.random().toString(36).slice(2)}`;
 
-  const currentToken = () => localStorage.getItem('bmb_supabase_access_token') || anonKey;
+  const currentToken = () => anonKey;
 
   const cleanupSocket = () => {
     if (heartbeat) { window.clearInterval(heartbeat); heartbeat = undefined; }
@@ -86,16 +86,11 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
     socket.addEventListener('error', scheduleReconnect);
   };
 
-  const handleAuthChange = () => { if (!closed) connect(); };
-  window.addEventListener('bmb:staff-authenticated', handleAuthChange);
-  window.addEventListener('bmb:staff-logout', handleAuthChange);
   connect();
 
   return () => {
     closed = true;
     if (reconnectTimer) window.clearTimeout(reconnectTimer);
-    window.removeEventListener('bmb:staff-authenticated', handleAuthChange);
-    window.removeEventListener('bmb:staff-logout', handleAuthChange);
     cleanupSocket();
   };
 }

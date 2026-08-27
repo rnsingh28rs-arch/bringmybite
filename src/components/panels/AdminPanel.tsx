@@ -814,26 +814,15 @@ function OrderRequests() {
   const action = async (order: StoredOrder, next: StoredOrder['status']) => {
     const verified = next === 'Approved' || next === 'Preparing' || next === 'Dispatched' || next === 'Delivered';
     const paymentStatus = verified ? 'Verified' : next === 'Declined' ? 'Rejected' : order.paymentStatus;
-    const whatsappWindow = (next === 'Approved' || next === 'Declined') ? window.open('about:blank', '_blank') : null;
     await updateStoredOrder(order.id, { status: next, paymentStatus });
-    try {
-      const key = order.kind === 'subscription' ? 'bmb_subscriptions' : 'bmb_instant_orders';
-      const rows = JSON.parse(localStorage.getItem(key) || '[]');
-      const updated = rows.map((row: any) => {
-        if (row.id !== order.id) return row;
-        if (order.kind === 'subscription') return { ...row, verificationStatus: verified ? 'Approved' : next === 'Declined' ? 'Rejected' : row.verificationStatus };
-        const status = next === 'Approved' ? 'Received' : next === 'Preparing' ? 'Cooking' : next === 'Dispatched' ? 'Dispatched' : next === 'Delivered' ? 'Delivered' : next === 'Declined' ? 'Cancelled' : row.status;
-        return { ...row, status, paymentStatus };
-      });
-      localStorage.setItem(key, JSON.stringify(updated));
-      window.dispatchEvent(new Event('bmb-order-request-change'));
-    } catch {}
-    if (whatsappWindow) {
+    if (next === 'Approved' || next === 'Declined') {
+      const whatsappWindow = window.open('about:blank', '_blank');
+      if (!whatsappWindow) console.warn('WhatsApp window was blocked after the database update succeeded.');
       const minutes = /galgotia/i.test(order.details || '') ? 45 : (/noida/i.test(order.details || '') && !/greater\s*noida/i.test(order.details || '')) ? 45 : (/greater\s*noida|knowledge\s*park|alpha|beta|gamma/i.test(order.details || '') ? 30 : 45);
       const message = next === 'Approved'
         ? `Namaste ${order.customerName}! 🙏\n\nYour ${order.kind === 'instant' ? 'instant thali order' : 'subscription payment'} ${order.id} has been APPROVED and your payment has been VERIFIED.\n\nUTR: ${order.utrNumber}\nAmount: ₹${order.amount.toLocaleString()}\nEstimated food delivery/service time: about ${minutes} minutes.\n\nPlease stay available at your selected delivery point.\n\nBring My Bite | Shree Foods\nWhatsApp/Help: +91 9315075165`
         : `Namaste ${order.customerName}. 🙏\n\nYour ${order.kind === 'instant' ? 'instant thali order' : 'subscription payment'} ${order.id} could not be approved after verification.\n\nPlease contact Bring My Bite on WhatsApp at +91 9315075165 for assistance.`;
-      whatsappWindow.location.href = whatsappLink(order.whatsapp || order.phone, message);
+      if (whatsappWindow) whatsappWindow.location.href = whatsappLink(order.whatsapp || order.phone, message);
     }
     await load();
     setSelected(null);
