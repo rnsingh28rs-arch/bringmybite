@@ -18,8 +18,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateSection }) => {
     setActiveRole,
     setIsRegistrationOpen,
     setIsInstantOrderOpen,
-    setIsWeeklyMenuOpen,
-    setActiveRole
+    setIsWeeklyMenuOpen
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
