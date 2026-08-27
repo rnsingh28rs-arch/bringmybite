@@ -164,15 +164,23 @@ export const RegistrationModal: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!fullName.trim() || !mobileNumber.trim()) {
       alert('Please enter your Full Name and Mobile Number.');
       return;
     }
-    if (!transactionId.trim()) { alert('Please enter the UTR / transaction reference.'); return; }
-    if (!paymentSlip) { alert('Please attach the payment screenshot / receipt.'); return; }
+
+    if (!transactionId.trim()) {
+      alert('Please enter the UTR / transaction reference.');
+      return;
+    }
+
+    if (!paymentSlip) {
+      alert('Please attach the payment screenshot / receipt.');
+      return;
+    }
 
     if (category === 'College Student' && !collegeName.trim()) {
       alert('Please enter your College Name for gate delivery.');
@@ -184,15 +192,34 @@ export const RegistrationModal: React.FC = () => {
       return;
     }
 
-    const activeCustomFields = registrationFields.filter((f) => f.active && !['customerName','mobileNumber','whatsappNumber','category','collegeName','companyName','houseFlatNo','streetArea','landmark','pinCode'].includes(f.field_key));
+    const activeCustomFields = registrationFields.filter(
+      (f) =>
+        f.active &&
+        ![
+          'customerName',
+          'mobileNumber',
+          'whatsappNumber',
+          'category',
+          'collegeName',
+          'companyName',
+          'houseFlatNo',
+          'streetArea',
+          'landmark',
+          'pinCode'
+        ].includes(f.field_key)
+    );
+
     for (const field of activeCustomFields) {
-      if (field.required && !String(customFieldValues[field.field_key] || '').trim()) {
+      if (
+        field.required &&
+        !String(customFieldValues[field.field_key] || '').trim()
+      ) {
         alert(`Please enter ${field.label}.`);
         return;
       }
     }
 
-    const sub = addSubscription({
+    const sub = await addSubscription({
       customerName: fullName,
       mobileNumber,
       whatsappNumber: whatsappNumber || mobileNumber,
@@ -201,7 +228,11 @@ export const RegistrationModal: React.FC = () => {
       lunchDeliveryPoint:
         category === 'College Student' ? studentDeliveryPoint : proDeliveryPoint,
       companyName: category === 'Working Professional' ? companyName : undefined,
-      streetArea: homeAddress || (category === 'College Student' ? `${collegeName} Gate Area` : `${companyName} Vicinity`),
+      streetArea:
+        homeAddress ||
+        (category === 'College Student'
+          ? `${collegeName} Gate Area`
+          : `${companyName} Vicinity`),
       pinCode: pinCode || '700091',
       mapLocationUrl: mapLocationUrl.trim() || undefined,
       referralCodeUsed: referralCodeInput.trim() || undefined,
@@ -212,20 +243,49 @@ export const RegistrationModal: React.FC = () => {
       startDate,
       duration,
       paymentMethod,
-      transactionId: transactionId || `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+      transactionId:
+        transactionId ||
+        `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
       amountPaid: calculatedTotal,
       paymentDate: new Date().toISOString().split('T')[0],
       customFields: customFieldValues
     });
 
-    saveLastOrderTracking({ id: sub.id, phone: mobileNumber });
+    try {
+      await addStoredOrder({
+        id: sub.id,
+        kind: 'subscription',
+        customerName: fullName,
+        phone: mobileNumber,
+        whatsapp: whatsappNumber || mobileNumber,
+        planOrMeal: `${packageType} • ${duration} • ${mealPreference}`,
+        amount: calculatedTotal,
+        utrNumber: transactionId.trim(),
+        paymentSlip,
+        paymentStatus: 'Pending Verification',
+        status: 'Pending Verification',
+        details:
+          `${category} • ${collegeName || companyName || homeAddress || ''}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
 
-    void addStoredOrder({
-      id: sub.id, kind: 'subscription', customerName: fullName, phone: mobileNumber, whatsapp: whatsappNumber || mobileNumber,
-      planOrMeal: `${packageType} • ${duration} • ${mealPreference}`, amount: calculatedTotal, utrNumber: transactionId.trim(), paymentSlip,
-      paymentStatus: 'Pending Verification', status: 'Pending Verification', details: `${category} • ${collegeName || companyName || homeAddress || ''}`,
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
-    });
+      saveLastOrderTracking({
+        id: sub.id,
+        phone: mobileNumber
+      });
+    } catch (error) {
+      console.error(
+        'Subscription payment proof persistence failed:',
+        error
+      );
+
+      alert(
+        'Your payment proof could not be saved. Please check your connection and submit again.'
+      );
+
+      return;
+    }
 
     try {
       confetti({
@@ -233,7 +293,9 @@ export const RegistrationModal: React.FC = () => {
         spread: 75,
         origin: { y: 0.6 }
       });
-    } catch (err) {}
+    } catch (err) {
+      // Confetti failure must never affect registration.
+    }
 
     setRegisteredSub(sub);
   };
