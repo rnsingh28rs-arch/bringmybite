@@ -84,14 +84,8 @@ jobs:
           # Hero: CMS banners are authoritative. Fallback never invents a price.
           p = Path('src/components/customer/HeroBanner.tsx'); s = p.read_text()
           s = s.replace("    pricing,\n", '')
-          s = s.replace("highlightPrice: `₹${pricing.vegMonthly.toLocaleString()}`", "highlightPrice: 'Price not set'")
-          s = s.replace("thaliRate: `₹${pricing.vegThaliInstant} Instant Single Thali`", "thaliRate: 'Price not set'")
-          s = s.replace("highlightPrice: `₹${pricing.eggMonthly.toLocaleString()}`", "highlightPrice: 'Price not set'")
-          s = s.replace("thaliRate: `₹${pricing.eggThaliInstant} Instant Single Thali`", "thaliRate: 'Price not set'")
-          s = s.replace("highlightPrice: `₹${pricing.nonVegMonthly.toLocaleString()}`", "highlightPrice: 'Price not set'")
-          s = s.replace("thaliRate: `₹${pricing.nonVegThaliInstant} Instant Single Thali`", "thaliRate: 'Price not set'")
-          s = s.replace("highlightPrice: `From ₹${pricing.vegThaliInstant}`", "highlightPrice: 'Price not set'")
-          s = s.replace("thaliRate: `Veg: ₹${pricing.vegThaliInstant} | Egg: ₹${pricing.eggThaliInstant} | Non-Veg: ₹${pricing.nonVegThaliInstant}`", "thaliRate: 'Price not set'")
+          s = re.sub(r'^\s*highlightPrice:.*$', "      highlightPrice: 'Price not set',", s, flags=re.M)
+          s = re.sub(r'^\s*thaliRate:.*$', "      thaliRate: 'Price not set',", s, flags=re.M)
           s = s.replace("dishHighlights: ['Veg Thali (₹80)', 'Egg Thali (₹100)', 'Non-Veg Thali (₹110)', 'Steaming Hot Gate Drop']", "dishHighlights: ['Veg Thali', 'Egg Thali', 'Non-Veg Thali', 'Steaming Hot Gate Drop']")
           if 'pricing.' in s:
               raise SystemExit('HeroBanner still contains legacy pricing references')
@@ -143,7 +137,6 @@ jobs:
               s = s.replace(old_start, new_start)
           elif 'const selectedBanner' not in s:
               raise SystemExit('Renewal pricing calculation block missing')
-          # Remove UI that described automatic discount calculation; duration remains selectable for service validity.
           s = s.replace("<div className=\"text-[10px] font-normal opacity-90 mt-0.5\">\n                        {d === '3 Months' ? '5% OFF' : d === '6 Months' ? '10% OFF' : 'Standard'}\n                      </div>", "")
           s = re.sub(r"\s*\{duration !== '1 Month' && \(\s*<div className=\"flex justify-between text-xs text-emerald-600 font-semibold\">.*?</div>\s*\)", '', s, flags=re.S)
           s = re.sub(r"\s*<div className=\"flex justify-between text-xs text-gray-600\">\s*<span>Base Monthly Rate:</span>.*?</div>", '', s, count=1, flags=re.S)
