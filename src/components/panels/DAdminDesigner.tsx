@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { useCms, PanelConfig, RoleConfig, PermissionConfig } from '../../cms/CmsContext';
 import { BannerConfig, RegistrationFieldConfig } from '../../cms/cmsDefaults';
 import { PackageType } from '../../types';
-import { Save, Plus, Trash2, ShieldCheck, LayoutDashboard, Image, Utensils, IndianRupee, FileText, CreditCard, Settings, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Save, Plus, Trash2, ShieldCheck, LayoutDashboard, Image, Utensils, FileText, CreditCard, Settings, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { StaffFinancePanel } from './StaffFinancePanel';
 import { GSTBillingPanel } from './GSTBillingPanel';
-import { CalculatorWidget } from '../common/CalculatorWidget';
 
 const input = 'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500';
 const card = 'bg-white rounded-2xl border border-gray-200 shadow-sm p-5';
@@ -22,7 +21,7 @@ export const DAdminDesigner: React.FC = () => {
 
   const tabs = [
     ['overview','Overview',LayoutDashboard], ['branding','Brand & Business',Settings], ['banners','Banners',Image], ['menu','Menu',Utensils],
-    ['pricing','Pricing',IndianRupee], ['registration','Registration Form',FileText], ['payments','Payments & UPI',CreditCard], ['staff','Staff Salaries',ShieldCheck], ['billing','GST Billing',CreditCard], ['access','Roles & Permissions',ShieldCheck], ['all-panels','All Panels',LayoutDashboard]
+    ['registration','Registration Form',FileText], ['payments','Payments & UPI',CreditCard], ['staff','Staff Salaries',ShieldCheck], ['billing','GST Billing',CreditCard], ['access','Roles & Permissions',ShieldCheck], ['all-panels','All Panels',LayoutDashboard]
   ] as const;
 
   return (
@@ -57,7 +56,6 @@ export const DAdminDesigner: React.FC = () => {
         {tab === 'branding' && <Branding cms={cms} flash={flash} />}
         {tab === 'banners' && <Banners cms={cms} flash={flash} />}
         {tab === 'menu' && <Menus cms={cms} flash={flash} />}
-        {tab === 'pricing' && <Pricing cms={cms} flash={flash} />}
         {tab === 'registration' && <Registration cms={cms} flash={flash} />}
         {tab === 'payments' && <Payments cms={cms} flash={flash} />}
         {tab === 'staff' && <StaffFinancePanel title="D-Admin Staff Salaries & Payroll" />}
@@ -65,7 +63,6 @@ export const DAdminDesigner: React.FC = () => {
         {tab === 'all-panels' && <AllPanels cms={cms} />}
         {tab === 'access' && <Access cms={cms} selectedRole={selectedRole} setSelectedRole={setSelectedRole} newPanel={newPanel} setNewPanel={setNewPanel} newRole={newRole} setNewRole={setNewRole} flash={flash} />}
       </div>
-      <CalculatorWidget />
     </div>
   );
 };
@@ -89,7 +86,6 @@ function Overview({ cms }: { cms: ReturnType<typeof useCms> }) {
     ['Registration fields', cms.registrationFields.filter(x=>x.active).length, 'Add/remove/reorder fields'],
     ['Roles', cms.roles.filter(x=>x.active).length, 'Role-based access'],
     ['Panels', cms.panels.filter(x=>x.active).length, 'Designer-created workspaces'],
-    ['Pricing records', Object.keys(cms.pricing).length, 'Used everywhere in the app']
   ];
   return <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{cards.map(([title,value,desc]) => <div className={card} key={title}><div className="text-xs uppercase tracking-wider text-gray-500 font-black">{title}</div><div className="text-3xl font-black text-[#124E33] mt-2">{value}</div><div className="text-xs text-gray-500 mt-1">{desc}</div></div>)}</div>;
 }
@@ -121,8 +117,6 @@ function Menus({ cms, flash }: any) {
   const save=async()=>{const next=cms.menus[pkg].map((d:any)=>d.day!==day?d:{...d,[meal]:d[meal]?draft:d[meal]});await cms.saveMenu(pkg,next);flash('Menu saved centrally. Every client will use the new dish names.');};
   return <div className={card}><h2 className="text-xl font-black text-[#124E33] mb-4">Central Menu Editor</h2><div className="grid md:grid-cols-3 gap-3 mb-4"><select className={input} value={pkg} onChange={e=>setPkg(e.target.value as PackageType)}><option>VEG CLASSIC</option><option>EGG DELIGHT</option><option>NON-VEG CLUB</option></select><select className={input} value={day} onChange={e=>setDay(e.target.value)}>{['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d=><option key={d}>{d}</option>)}</select><select className={input} value={meal} onChange={e=>setMeal(e.target.value as any)}><option value="lunch">Lunch</option><option value="dinner">Dinner</option></select></div><div className="grid md:grid-cols-2 gap-4">{['dal','dryVeg','gravyOrNonVeg','rice','foilPacked','extras'].map(k=><label className="text-sm font-bold text-gray-700" key={k}>{k}<input className={input} value={draft[k]||''} onChange={e=>setDraft({...draft,[k]:e.target.value})}/></label>)}</div><button onClick={save} className="mt-5 px-4 py-2.5 rounded-xl bg-[#124E33] text-white font-bold flex gap-2"><Save className="w-4 h-4"/>Save Menu</button></div>;
 }
-
-function Pricing({ cms, flash }: any) { const [p,setP]=useState(cms.pricing); React.useEffect(()=>setP(cms.pricing),[cms.pricing]); const save=async()=>{await cms.updatePricing(p);flash('Pricing updated everywhere');}; return <div className={card}><h2 className="text-xl font-black text-[#124E33] mb-4">Pricing & Packages</h2><div className="grid md:grid-cols-3 gap-4">{Object.entries(p).map(([k,v])=><label key={k} className="text-sm font-bold text-gray-700">{k}<input type="number" className={input} value={v as number} onChange={e=>setP({...p,[k]:Number(e.target.value)})}/></label>)}</div><button onClick={save} className="mt-5 px-4 py-2.5 rounded-xl bg-[#124E33] text-white font-bold flex gap-2"><Save className="w-4 h-4"/>Save Pricing</button></div>; }
 
 function Registration({ cms, flash }: any) { const [fields,setFields]=useState(cms.registrationFields); const [newField,setNewField]=useState<RegistrationFieldConfig>({id:'',label:'New Field',field_key:'new_field',field_type:'text',required:false,active:true,sort_order:fields.length+1,placeholder:'',options:[]}); React.useEffect(()=>setFields(cms.registrationFields),[cms.registrationFields]); const save=async(f:RegistrationFieldConfig)=>{await cms.saveRegistrationField(f);flash('Registration form updated');}; return <div className="space-y-4"><div className={card}><h2 className="text-xl font-black text-[#124E33]">Registration Form Designer</h2><p className="text-sm text-gray-500 mt-1">Add, rename, reorder, make required/optional, or disable fields without rebuilding the app.</p><div className="space-y-3 mt-4">{fields.map(f=><div key={f.id} className="grid md:grid-cols-[1fr_1fr_140px_90px_90px] gap-2 items-center p-3 rounded-xl bg-gray-50"><input className={input} value={f.label} onChange={e=>setFields(fields.map(x=>x.id===f.id?{...x,label:e.target.value}:x))}/><input className={input} value={f.placeholder} onChange={e=>setFields(fields.map(x=>x.id===f.id?{...x,placeholder:e.target.value}:x))}/><select className={input} value={f.field_type} onChange={e=>setFields(fields.map(x=>x.id===f.id?{...x,field_type:e.target.value as any}:x))}><option>text</option><option>tel</option><option>email</option><option>date</option><option>select</option><option>textarea</option><option>number</option><option>checkbox</option></select><button onClick={()=>save({...f,active:!f.active})} className={`rounded-xl px-2 py-2 text-xs font-bold ${f.active?'bg-emerald-100 text-emerald-800':'bg-gray-200 text-gray-600'}`}>{f.active?'Active':'Hidden'}</button><button onClick={async()=>{await cms.deleteRegistrationField(f.id);flash('Field deleted')}} className="rounded-xl bg-rose-50 text-rose-700 p-2"><Trash2 className="w-4 h-4 mx-auto"/></button><button onClick={()=>save(f)} className="md:col-span-5 justify-self-start px-3 py-2 rounded-lg bg-[#124E33] text-white text-xs font-bold">Save Field</button></div>)}</div></div><div className={card}><h3 className="font-black">Add a field</h3><div className="grid md:grid-cols-3 gap-3 mt-3"><input className={input} placeholder="Label" value={newField.label} onChange={e=>setNewField({...newField,label:e.target.value,id:e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,'_'),field_key:e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,'_')})}/><select className={input} value={newField.field_type} onChange={e=>setNewField({...newField,field_type:e.target.value as any})}><option>text</option><option>tel</option><option>email</option><option>select</option><option>textarea</option><option>number</option><option>checkbox</option></select><input className={input} placeholder="Placeholder" value={newField.placeholder} onChange={e=>setNewField({...newField,placeholder:e.target.value})}/></div><button onClick={async()=>{await save({...newField,sort_order:fields.length+1});setNewField({...newField,id:`field-${Date.now()}`,field_key:`field_${Date.now()}`,label:'New Field'});}} className="mt-3 px-4 py-2.5 rounded-xl bg-amber-500 font-bold flex gap-2"><Plus className="w-4 h-4"/>Add Field</button></div></div>; }
 

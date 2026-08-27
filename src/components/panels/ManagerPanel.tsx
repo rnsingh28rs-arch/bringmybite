@@ -66,9 +66,9 @@ export const ManagerPanel: React.FC = () => {
   const [editExtras, setEditExtras] = useState('');
   const [menuEditMsg, setMenuEditMsg] = useState('');
 
-  const handleSavePricing = (e: React.FormEvent) => {
+  const handleSavePricing = async (e: React.FormEvent) => {
     e.preventDefault();
-    updatePricing({
+    await updatePricing({
       vegMonthly: Number(vegPrice),
       eggMonthly: Number(eggPrice),
       nonVegMonthly: Number(nonVegPrice),
@@ -80,10 +80,10 @@ export const ManagerPanel: React.FC = () => {
     setTimeout(() => setPricingSuccess(false), 3000);
   };
 
-  const handleAddNewInventory = (e: React.FormEvent) => {
+  const handleAddNewInventory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim() || !newItemQty) return;
-    addInventoryItem({
+    await addInventoryItem({
       name: newItemName,
       category: newItemCategory,
       quantity: Number(newItemQty),
@@ -95,9 +95,9 @@ export const ManagerPanel: React.FC = () => {
     setNewItemThreshold('');
   };
 
-  const handleSaveMenuSchedule = (e: React.FormEvent) => {
+  const handleSaveMenuSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateMenuItem(editPackage, editDay, editMeal, {
+    await updateMenuItem(editPackage, editDay, editMeal, {
       dal: editDal,
       dryVeg: editDryVeg,
       gravyOrNonVeg: editGravy,
