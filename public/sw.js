@@ -1,7 +1,5 @@
-const CACHE_NAME = 'bring-my-bite-v1';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
+const CACHE_NAME = 'bring-my-bite-v2';
+const STATIC_ASSETS = [
   '/manifest.json',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
@@ -10,53 +8,55 @@ const ASSETS_TO_CACHE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
+    caches.keys().then((keys) =>
+      Promise.all(
         keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      );
-    }).then(() => self.clients.claim())
+      )
+    ).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Fetch new version in background
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
+
+  // Always prefer the network for HTML/navigation so a new Vercel
+  // deployment cannot remain hidden behind an old cached application shell.
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse.clone());
+              cache.put('/index.html', response.clone());
             });
           }
-        }).catch(() => {});
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // Static assets: cache first, then refresh in the background.
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      const network = fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+          });
         }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
         return networkResponse;
-      }).catch(() => {
-        // Fallback for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
-        }
       });
+      return cachedResponse || network;
     })
   );
 });
