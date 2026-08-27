@@ -1,0 +1,124 @@
+name: Pricing Banner Refactor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pricing-banner-refactor.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: "!contains(github.event.head_commit.message, '[skip pricing refactor]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply pricing refactor
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          def rw(path, fn):
+              p=Path(path); s=p.read_text(); s2=fn(s); p.write_text(s2); print(path)
+
+          def req_replace(path, old, new, count=-1):
+              p=Path(path); s=p.read_text(); n=s.count(old)
+              if n == 0: raise SystemExit(f'Expected text not found in {path}: {old[:100]}')
+              p.write_text(s.replace(old,new,count)); print(path, 'replaced', n)
+
+          # D-Admin: remove Pricing tab/render/function/overview card and calculator.
+          p=Path('src/components/panels/DAdminDesigner.tsx'); s=p.read_text()
+          s=s.replace(', IndianRupee','')
+          s=s.replace("['pricing','Pricing',IndianRupee], ", '')
+          s=s.replace("        {tab === 'pricing' && <Pricing cms={cms} flash={flash} />}\n", '')
+          s=s.replace("import { CalculatorWidget } from '../common/CalculatorWidget';\n", '')
+          s=s.replace("      <CalculatorWidget />\n", '')
+          s,n=re.subn(r'\nfunction Pricing\(.*?\nfunction Registration\(', '\nfunction Registration(', s, flags=re.S)
+          if n != 1: raise SystemExit(f'DAdmin Pricing function removal matched {n}')
+          s=s.replace("    ['Pricing records', Object.keys(cms.pricing).length, 'Used everywhere in the app']\n", '')
+          s=s.replace("    ['Panels', cms.panels.filter(p=>p.active).length, 'Designer-created workspaces'],\n    ['Pricing records', Object.keys(cms.pricing).length, 'Used everywhere in the app']\n", "    ['Panels', cms.panels.filter(p=>p.active).length, 'Designer-created workspaces']\n")
+          p.write_text(s)
+
+          # Remove the obsolete Pricing workspace from default panel metadata.
+          req_replace('src/cms/cmsDefaults.ts', "['dashboard', 'Executive Dashboard'], ['banners', 'Banners & Home'], ['menu', 'Menu & Dishes'], ['pricing', 'Pricing & Packages'],\n", "['dashboard', 'Executive Dashboard'], ['banners', 'Banners & Home'], ['menu', 'Menu & Dishes'],\n")
+
+          # Remove generic calculator widget from app shell.
+          req_replace('src/App.tsx', "import { CalculatorWidget } from './components/common/CalculatorWidget';\n", '')
+          req_replace('src/App.tsx', "        {(role === 'manager' || role === 'chef') && <CalculatorWidget />}\n", '')
+
+          # Customer Packages: read final package/instant display prices from banner CMS, never bmb_pricing.
+          p=Path('src/components/customer/PackagesSection.tsx'); s=p.read_text()
+          s=s.replace("import { useApp } from '../../context/AppContext';", "import { useApp } from '../../context/AppContext';\nimport { useCms } from '../../cms/CmsContext';")
+          s=s.replace("    pricing,\n", '')
+          marker="  } = useApp();"
+          helper="""  } = useApp();\n  const { banners } = useCms();\n  const getBanner = (packageKey: PackageType) => banners.find((b) => b.active && b.package_key === packageKey);\n  const packagePrice = (packageKey: PackageType) => getBanner(packageKey)?.highlight_price || 'Price not set';\n  const instantPrice = (type: 'veg' | 'egg' | 'non-veg') => {\n    const banner = banners.find((b) => b.active && b.thali_key === type);\n    return banner?.thali_rate || 'Price not set';\n  };"""
+          if marker not in s: raise SystemExit('PackagesSection hook marker missing')
+          s=s.replace(marker,helper,1)
+          for a,b in {
+              "₹{pricing.vegMonthly.toLocaleString()}":"{packagePrice('VEG CLASSIC')}",
+              "₹{pricing.eggMonthly.toLocaleString()}":"{packagePrice('EGG DELIGHT')}",
+              "₹{pricing.nonVegMonthly.toLocaleString()}":"{packagePrice('NON-VEG CLUB')}",
+              "₹{pricing.vegThaliInstant}":"{instantPrice('veg')}",
+              "₹{pricing.eggThaliInstant}":"{instantPrice('egg')}",
+              "₹{pricing.nonVegThaliInstant}":"{instantPrice('non-veg')}",
+          }.items(): s=s.replace(a,b)
+          if 'pricing.' in s: raise SystemExit('PackagesSection still contains pricing references')
+          p.write_text(s)
+
+          # Hero fallback must never calculate from legacy pricing. Real CMS banners already supply exact display values.
+          p=Path('src/components/customer/HeroBanner.tsx'); s=p.read_text(); s=s.replace("    pricing,\n", '')
+          for old in [
+              "`₹${pricing.vegMonthly.toLocaleString()}`","`₹${pricing.eggMonthly.toLocaleString()}`","`₹${pricing.nonVegMonthly.toLocaleString()}`",
+              "`₹${pricing.vegThaliInstant} Instant Single Thali`","`₹${pricing.eggThaliInstant} Instant Single Thali`","`₹${pricing.nonVegThaliInstant} Instant Single Thali`",
+              "`From ₹${pricing.vegThaliInstant}`","`Veg: ₹${pricing.vegThaliInstant} | Egg: ₹${pricing.eggThaliInstant} | Non-Veg: ₹${pricing.nonVegThaliInstant}`"]:
+              s=s.replace(old,"'Price not set'")
+          if 'pricing.' in s: raise SystemExit('HeroBanner still contains pricing references')
+          p.write_text(s)
+
+          # Subscription registration: fixed banner price; duration remains a service-period choice, not a pricing formula.
+          p=Path('src/components/customer/RegistrationModal.tsx'); s=p.read_text(); s=s.replace("    pricing,\n", '')
+          old="""  // Calculate monthly & total price\n  const baseMonthlyPrice =\n    packageType === 'VEG CLASSIC'\n      ? pricing.vegMonthly\n      : packageType === 'EGG DELIGHT'\n      ? pricing.eggMonthly\n      : pricing.nonVegMonthly;\n\n  const multiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;\n  const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 0.90 : 1.0;\n  const calculatedTotal = Math.round(baseMonthlyPrice * multiplier * discountFactor);\n"""
+          new="""  const { banners } = useCms();\n  const selectedBanner = banners.find((b) => b.active && b.package_key === packageType);\n  const configuredPriceText = selectedBanner?.highlight_price || 'Price not set';\n  const configuredAmount = Number(configuredPriceText.replace(/[^0-9.]/g, '')) || 0;\n"""
+          if old not in s: raise SystemExit('Registration pricing calculation block missing')
+          s=s.replace(old,new)
+          s=s.replace('calculatedTotal','configuredAmount').replace('baseMonthlyPrice','configuredAmount')
+          p.write_text(s)
+
+          # Instant Thali: final amount comes directly from the selected banner's manually entered thali_rate.
+          p=Path('src/components/customer/InstantOrderModal.tsx'); s=p.read_text(); s=s.replace("    pricing,\n", '')
+          s=s.replace("import { PaymentMethod } from '../../types';", "import { PaymentMethod } from '../../types';\nimport { useCms } from '../../cms/CmsContext';")
+          marker="  const {\n    isInstantOrderOpen,"
+          if marker not in s: raise SystemExit('InstantOrderModal hook marker missing')
+          s=s.replace(marker,"  const { banners } = useCms();\n  const {\n    isInstantOrderOpen,",1)
+          old="""  const unitPrice =\n    thaliType === 'veg'\n      ? pricing.vegThaliInstant\n      : thaliType === 'egg'\n      ? pricing.eggThaliInstant\n      : pricing.nonVegThaliInstant;\n\n  const totalAmount = unitPrice * quantity;\n"""
+          new="""  const configuredRate = banners.find((b) => b.active && b.thali_key === thaliType)?.thali_rate || '';\n  const unitPrice = Number(configuredRate.replace(/[^0-9.]/g, '')) || 0;\n  const totalAmount = unitPrice;\n"""
+          if old not in s: raise SystemExit('Instant pricing calculation block missing')
+          s=s.replace(old,new)
+          p.write_text(s)
+
+          # Remove the old generic calculator source from the customer/staff entry path if unused after this refactor.
+          # Keep the file itself for compatibility with any non-rendered legacy imports elsewhere.
+
+      - name: Verify source and build
+        run: |
+          npm run lint
+          npm test
+          npm run build
+
+      - name: Commit refactor and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src .github/workflows/pricing-banner-refactor.yml
+          git rm .github/workflows/pricing-banner-refactor.yml
+          git commit -m 'refactor: make banner prices authoritative [skip pricing refactor]'
+          git push origin main
