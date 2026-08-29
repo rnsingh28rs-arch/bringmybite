@@ -19,6 +19,7 @@ import { ExpiryReminderBanner } from './components/customer/ExpiryReminderBanner
 import { OrderStatusNotifier } from './components/customer/OrderStatusNotifier';
 import { NativeAppDownloadModal } from './components/mobile/NativeAppDownloadModal';
 import { StaffNavBar } from './components/panels/StaffNavBar';
+import { StaffLoginGate } from './components/panels/StaffLoginGate';
 import { AdminPanel } from './components/panels/AdminPanel';
 import { ManagerPanel } from './components/panels/ManagerPanel';
 import { ChefPanel } from './components/panels/ChefPanel';
@@ -42,9 +43,7 @@ const REDUNDANT_PANEL_TITLES = new Set([
 function removeRedundantPanelTitles() {
   const candidates = document.querySelectorAll<HTMLElement>('h1, h2, h3, span, p, div');
   candidates.forEach((element) => {
-    if (element.children.length === 0 && REDUNDANT_PANEL_TITLES.has(element.textContent?.trim() || '')) {
-      element.style.display = 'none';
-    }
+    if (element.children.length === 0 && REDUNDANT_PANEL_TITLES.has(element.textContent?.trim() || '')) element.style.display = 'none';
   });
 }
 
@@ -56,10 +55,7 @@ const MainContent: React.FC = () => {
     const syncLocation = () => setLocationKey(window.location.href);
     window.addEventListener('hashchange', syncLocation);
     window.addEventListener('popstate', syncLocation);
-    return () => {
-      window.removeEventListener('hashchange', syncLocation);
-      window.removeEventListener('popstate', syncLocation);
-    };
+    return () => { window.removeEventListener('hashchange', syncLocation); window.removeEventListener('popstate', syncLocation); };
   }, []);
 
   useEffect(() => {
@@ -67,13 +63,8 @@ const MainContent: React.FC = () => {
       const target = event.target as HTMLElement | null;
       const control = target?.closest('button, a') as HTMLElement | null;
       const label = control?.textContent?.replace(/\s+/g, ' ').trim().toLowerCase() || '';
-      if (label.includes('exit to website') || label.includes('back to website')) {
-        event.preventDefault();
-        event.stopPropagation();
-        window.location.assign('/');
-      }
+      if (label.includes('exit to website') || label.includes('back to website')) { event.preventDefault(); event.stopPropagation(); window.location.assign('/'); }
     };
-
     document.addEventListener('click', handleWebsiteNavigation, true);
     return () => document.removeEventListener('click', handleWebsiteNavigation, true);
   }, []);
@@ -88,13 +79,18 @@ const MainContent: React.FC = () => {
   const access = resolveStaffRoute(window.location.pathname);
   const role = access?.role ?? 'customer';
 
-  useEffect(() => {
-    setActiveRole(role);
-  }, [role, locationKey, setActiveRole]);
+  useEffect(() => { setActiveRole(role); }, [role, locationKey, setActiveRole]);
 
-  if (role === 'd_admin') return <DAdminDesigner />;
+  if (role === 'd_admin') return <StaffLoginGate role="d_admin"><DAdminDesigner /></StaffLoginGate>;
 
   const staffWorkspace = role !== 'customer';
+  const staffContent = role === 'admin'
+    ? <StaffLoginGate role="admin"><AdminPanel /></StaffLoginGate>
+    : role === 'manager'
+    ? <StaffLoginGate role="manager"><ManagerPanel /></StaffLoginGate>
+    : role === 'chef'
+    ? <StaffLoginGate role="chef"><ChefPanel /></StaffLoginGate>
+    : null;
 
   return (
     <MobileAppFrame>
@@ -104,18 +100,8 @@ const MainContent: React.FC = () => {
         <TodayMenuTicker />
         {staffWorkspace && <StaffNavBar />}
         <main className="flex-1">
-          {role === 'customer' && (
-            <>
-              <ExpiryReminderBanner />
-              <OrderStatusNotifier />
-              <HeroBanner />
-              <PackagesSection />
-              <LowerFeaturesGrid />
-            </>
-          )}
-          {role === 'admin' && <AdminPanel />}
-          {role === 'manager' && <ManagerPanel />}
-          {role === 'chef' && <ChefPanel />}
+          {role === 'customer' && <><ExpiryReminderBanner /><OrderStatusNotifier /><HeroBanner /><PackagesSection /><LowerFeaturesGrid /></>}
+          {staffContent}
         </main>
         {(role === 'manager' || role === 'chef') && <CalculatorWidget />}
         <Footer />
@@ -134,11 +120,5 @@ const MainContent: React.FC = () => {
 };
 
 export default function App() {
-  return (
-    <CmsProvider>
-      <AppProvider>
-        <MainContent />
-      </AppProvider>
-    </CmsProvider>
-  );
+  return <CmsProvider><AppProvider><MainContent /></AppProvider></CmsProvider>;
 }
