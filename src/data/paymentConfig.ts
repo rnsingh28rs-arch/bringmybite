@@ -11,12 +11,12 @@ export interface BankDetails {
 
 export const OFFICIAL_BANK_DETAILS: BankDetails = {
   bankName: 'Axis Bank',
-  accountHolder: 'Quality Pan',
+  accountHolder: 'QUALITY PAN',
   accountNumber: '922020048876624',
   ifscCode: 'UTIB0000624',
-  accountType: 'Proprietorship firm Current A/c',
+  accountType: 'CAA',
   authorizedSignatory: 'Rahul Narendra Singh',
-  upiId: '900484984@YBL',
+  upiId: '9004848984@AXISBANK',
   phone: '+91 9315075165'
 };
 
@@ -24,7 +24,7 @@ export const getUpiPaymentUrl = (amount: number, note: string = 'Bring My Bite O
   const payee = encodeURIComponent(OFFICIAL_BANK_DETAILS.accountHolder);
   const upi = OFFICIAL_BANK_DETAILS.upiId;
   const encodedNote = encodeURIComponent(note);
-  return `upi://pay?pa=${upi}&pn=${payee}&am=${amount}&cu=INR&tn=${encodedNote}`;
+  return `upi://pay?pa=${encodeURIComponent(upi)}&pn=${payee}&am=${amount}&cu=INR&tn=${encodedNote}`;
 };
 
 export const getQrCodeUrl = (amount: number, note: string = 'Bring My Bite Order') => {
