@@ -4,8 +4,13 @@ const config:SupabaseRestConfig={
   anonKey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY||import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||import.meta.env.VITE_SUPABASE_ANON_KEY||import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_8aupeYk6D1q4c0T_EtzgtQ_rViMvNME'
 };
 export const isSupabaseConfigured=Boolean(config.url&&config.anonKey);
+const STAFF_SESSION_KEY='bmb_staff_session_v1';
+function getStaffAccessToken(){try{const raw=localStorage.getItem(STAFF_SESSION_KEY);if(!raw)return '';const session=JSON.parse(raw);return typeof session?.access_token==='string'?session.access_token:'';}catch{return '';}}
 const jsonHeaders=()=>({'Content-Type':'application/json',apikey:config.anonKey});
-const authHeaders=()=>({...jsonHeaders(),Authorization:`Bearer ${config.anonKey}`});
+const authHeaders=()=>({...jsonHeaders(),Authorization:`Bearer ${getStaffAccessToken()||config.anonKey}`});
+export const getSupabaseUrl=()=>config.url;
+export const getSupabasePublishableKey=()=>config.anonKey;
+export const STAFF_SESSION_STORAGE_KEY=STAFF_SESSION_KEY;
 async function readResponse(response:Response){const data=await response.json().catch(()=>null);if(!response.ok){const message=data&&typeof data==='object'&&typeof (data as any).message==='string'?(data as any).message:data&&typeof data==='object'&&typeof (data as any).error==='string'?(data as any).error:`Supabase request failed (${response.status})`;const detail=data&&typeof data==='object'&&typeof (data as any).details==='string'?` — ${(data as any).details}`:'';throw new Error(`${message}${detail}`);}return data;}
 function toDatabasePayload(table:string,body:any):any{if(table!=='bmb_admin_users') return body;const normalize=(row:any)=>({user_id:row.user_id,username:row.username,email:row.email,role_id:row.role_id,active:row.active});return Array.isArray(body)?body.map(normalize):normalize(body);}
 const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
