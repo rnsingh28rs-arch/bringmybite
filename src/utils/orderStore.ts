@@ -1,4 +1,4 @@
-import { isSupabaseConfigured, supabaseSelect, supabaseInsert, supabasePatch, supabaseRpc } from '../cms/supabaseRest';
+import { isSupabaseConfigured, supabaseSelect, supabaseInsert, supabasePatch, supabaseRpc, getSupabaseUrl, getSupabasePublishableKey } from '../cms/supabaseRest';
 
 export type StoredOrderKind = 'instant' | 'subscription';
 export type StoredOrderStatus = 'Pending Verification' | 'Approved' | 'Confirmed' | 'Preparing' | 'Dispatched' | 'Delivered' | 'Declined' | 'Cancelled' | 'Rejected';
@@ -31,10 +31,22 @@ function toUiStatus(status: string): StoredOrderStatus { if (status === 'Confirm
 function toDbStatus(status: string): string { if (status === 'Approved') return 'Confirmed'; if (status === 'Declined') return 'Rejected'; return status; }
 function roleForStatus(status?: string): StoredOrderRole { if (status === 'Preparing') return 'chef'; if (status === 'Approved' || status === 'Dispatched' || status === 'Delivered') return 'manager'; return 'admin'; }
 
+async function insertPublicOrder(order: StoredOrder) {
+  const response = await fetch(`${getSupabaseUrl()}/rest/v1/bmb_orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: getSupabasePublishableKey(), Prefer: 'return=minimal' },
+    body: JSON.stringify(toDb(order))
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(body || `Supabase order submission failed (${response.status}).`);
+  }
+}
+
 export async function addStoredOrder(order: StoredOrder): Promise<StoredOrder> {
   const routed = { ...order, assignedRole: order.assignedRole || 'admin', assignedTo: order.assignedTo || 'admin' };
   if (isSupabaseConfigured) {
-    await supabaseInsert('bmb_orders', toDb(routed) as any);
+    await insertPublicOrder(routed);
     const next = [routed, ...readLocal().filter(x => x.id !== routed.id)]; writeLocal(next); return routed;
   }
   const next = [routed, ...readLocal().filter(x => x.id !== routed.id)]; writeLocal(next); return routed;
