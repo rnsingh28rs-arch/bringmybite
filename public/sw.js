@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bring-my-bite-v2';
+const CACHE_NAME = 'bring-my-bite-v3';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/manifest.webmanifest',
@@ -27,16 +27,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // Always prefer the network for HTML/navigation so a new Vercel
-  // deployment cannot remain hidden behind an old cached application shell.
   if (event.request.mode === 'navigate' || event.request.destination === 'document') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
           if (response && response.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put('/index.html', response.clone());
-            });
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', response.clone()));
           }
           return response;
         })
@@ -45,14 +41,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: cache first, then refresh in the background.
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const network = fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
-          });
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse.clone()));
         }
         return networkResponse;
       });
