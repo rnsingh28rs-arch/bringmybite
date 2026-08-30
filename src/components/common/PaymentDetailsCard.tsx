@@ -25,8 +25,6 @@ export const PaymentDetailsCard: React.FC<PaymentDetailsCardProps> = ({ amount, 
     ? getUpiPaymentUrl(payableAmount, orderReference)
     : getUpiPaymentUrl(0, orderReference);
 
-  // The generic UPI intent lets Android show the installed UPI-app chooser.
-  // App-specific fallbacks make the common apps one tap away on supported phones.
   const googlePayUrl = upiUrl.replace(/^upi:\/\/pay\?/, 'gpay://upi/pay?');
   const phonePeUrl = upiUrl.replace(/^upi:\/\/pay\?/, 'phonepe://pay?');
   const paytmUrl = upiUrl.replace(/^upi:\/\/pay\?/, 'paytmmp://pay?');
@@ -80,7 +78,7 @@ export const PaymentDetailsCard: React.FC<PaymentDetailsCardProps> = ({ amount, 
               <div className="flex items-center justify-between border-b border-gray-200 pb-1.5"><span className="text-gray-500 flex items-center gap-1.5"><FileCheck className="w-3.5 h-3.5 text-[#124E33]" />IFSC:</span><span className="font-mono font-extrabold text-xs text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">{payment.ifscCode}</span></div>
               <div className="flex items-center justify-between pt-0.5"><span className="text-gray-500">Account Type:</span><span className="font-semibold text-gray-800 text-[11px] bg-white px-2 py-0.5 rounded border border-gray-200">{payment.accountType}</span></div>
             </div>
-            <button type="button" onClick={() => copyToClipboard(`Bank: ${payment.bankName}\nA/C Name: ${payment.accountHolder}\nA/C Number: ${payment.accountNumber}\nIFSC: ${payment.ifscCode}\nUPI ID: ${payment.upiId}`, 'allBank')} className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-[#0C3822] text-xs font-extrabold rounded-xl flex items-center justify-center gap-1.5 border border-emerald-200">{copiedField === 'allBank' ? <><Check className="w-3.5 h-3.5 text-emerald-600" /><span>Payment Details Copied</span></> : <><Copy className="w-3.5 h-3.5 text-[#124E33]" /><span>Copy Payment Details</span>}</button>
+            <button type="button" onClick={() => copyToClipboard(`Bank: ${payment.bankName}\nA/C Name: ${payment.accountHolder}\nA/C Number: ${payment.accountNumber}\nIFSC: ${payment.ifscCode}\nUPI ID: ${payment.upiId}`, 'allBank')} className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-[#0C3822] text-xs font-extrabold rounded-xl flex items-center justify-center gap-1.5 border border-emerald-200">{copiedField === 'allBank' ? <><Check className="w-3.5 h-3.5 text-emerald-600" /><span>Payment Details Copied</span></> : <><Copy className="w-3.5 h-3.5 text-[#124E33]" /><span>Copy Payment Details</span></>}</button>
           </div>
         </div>
       </div>
