@@ -16,10 +16,10 @@ export const TodayMenuTicker: React.FC = () => {
             <div className="inline-flex items-center gap-5 pl-5 pr-5 animate-marquee font-black text-xs sm:text-sm uppercase tracking-wide">
               <span>BOOK YOUR SLOT ASAP</span><span className="opacity-50">•</span>
               <span className="inline-flex items-center gap-2"><Gift className="w-4 h-4 shrink-0" />FIRST 200 SUBSCRIBERS GET AN EXCLUSIVE GIFT</span><span className="opacity-50">•</span>
-              <span>DELIVERY STARTS AUGUST 1</span><span className="opacity-50">•</span><span>GREATER NOIDA ONLY</span><span className="opacity-50">•</span>
+              <span>DELIVERY STARTS SEPTEMBER 1</span><span className="opacity-50">•</span><span>GREATER NOIDA ONLY</span><span className="opacity-50">•</span>
               <span>BOOK YOUR SLOT ASAP</span><span className="opacity-50">•</span>
               <span className="inline-flex items-center gap-2"><Gift className="w-4 h-4 shrink-0" />FIRST 200 SUBSCRIBERS GET AN EXCLUSIVE GIFT</span><span className="opacity-50">•</span>
-              <span>DELIVERY STARTS AUGUST 1</span>
+              <span>DELIVERY STARTS SEPTEMBER 1</span>
             </div>
           </div>
         </div>
