@@ -20,11 +20,14 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateSection }) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full max-w-full overflow-x-hidden bg-[#FAF7F2]/95 backdrop-blur-md border-b border-[#E8E1D5] shadow-xs">
-      <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20 min-w-0 gap-2">
-          <div className="cursor-pointer min-w-0 shrink" onClick={() => { setActiveRole('customer'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><Logo size="md" /></div>
-          <nav className="hidden lg:flex items-center space-x-7 text-sm font-semibold text-[#1A261E]">
+    <header className="sticky top-0 z-40 w-full max-w-full overflow-x-clip bg-[#FAF7F2]/95 backdrop-blur-md border-b border-[#E8E1D5] shadow-xs">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        {/* Desktop / tablet header */}
+        <div className="hidden md:flex items-center justify-between h-20 min-w-0">
+          <div className="cursor-pointer min-w-0 shrink" onClick={() => { setActiveRole('customer'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+            <Logo size="md" />
+          </div>
+          <nav className="hidden lg:flex items-center space-x-7 text-sm font-semibold text-[#1A261E] shrink-0">
             <button onClick={() => handleNavClick('hero')} className="text-[#124E33] hover:text-[#0C3822] transition-colors relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#124E33]">Home</button>
             <button onClick={() => handleNavClick('today-menu')} className="text-gray-700 hover:text-[#124E33] py-1">Today's Menu</button>
             <button onClick={() => handleNavClick('packages')} className="text-gray-700 hover:text-[#124E33] py-1">Our Packages</button>
@@ -32,20 +35,36 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateSection }) => {
             <button onClick={() => handleNavClick('why-us')} className="text-gray-700 hover:text-[#124E33] py-1">About Us</button>
             <button onClick={() => handleNavClick('contact')} className="text-gray-700 hover:text-[#124E33] py-1">Contact Us</button>
           </nav>
-          <div className="hidden md:flex items-center gap-3">
+          <div className="flex items-center gap-2 lg:gap-3 shrink-0">
             <InstallAppButton />
-            <button onClick={() => setIsInstantOrderOpen(true)} className="flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl border border-[#C88A24] text-[#8C5E13] bg-[#FDF7E7] hover:bg-[#F9EDCF] transition-all shadow-xs active:scale-95"><Zap className="w-4 h-4 text-[#C88A24] fill-[#C88A24]" /><span>Instant Thali</span></button>
-            <button onClick={() => setIsRegistrationOpen(true)} className="flex items-center gap-2 bg-[#124E33] hover:bg-[#0A2A1B] text-white text-xs font-bold px-4.5 py-2.5 rounded-xl shadow-sm active:scale-95"><CalendarCheck className="w-4 h-4 text-[#F2C94C]" /><span>Subscribe Now</span></button>
+            <button onClick={() => setIsInstantOrderOpen(true)} className="flex items-center gap-1.5 text-xs font-bold px-3 lg:px-4 py-2.5 rounded-xl border border-[#C88A24] text-[#8C5E13] bg-[#FDF7E7] hover:bg-[#F9EDCF] transition-all shadow-xs active:scale-95">
+              <Zap className="w-4 h-4 text-[#C88A24] fill-[#C88A24]" /><span>Instant Thali</span>
+            </button>
+            <button onClick={() => setIsRegistrationOpen(true)} className="hidden lg:flex items-center gap-2 bg-[#124E33] hover:bg-[#0A2A1B] text-white text-xs font-bold px-4.5 py-2.5 rounded-xl shadow-sm active:scale-95">
+              <CalendarCheck className="w-4 h-4 text-[#F2C94C]" /><span>Subscribe Now</span>
+            </button>
           </div>
-          <div className="flex md:hidden items-center justify-end gap-1 sm:gap-2 min-w-0 shrink-0">
-            <div className="hidden min-[480px]:block"><InstallAppButton /></div>
-            <button onClick={() => setIsInstantOrderOpen(true)} className="text-[10px] min-[480px]:text-xs bg-[#FDF7E7] text-[#8C5E13] border border-[#C88A24] font-bold px-2 min-[480px]:px-3 py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap"><Zap className="w-3 h-3 text-[#C88A24] fill-[#C88A24]" /><span className="hidden min-[420px]:inline">Instant Thali</span><span className="min-[420px]:hidden">Instant</span></button>
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 shrink-0 rounded-xl text-gray-700 hover:text-black hover:bg-gray-100" aria-label="Toggle Navigation Menu">{mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}</button>
+        </div>
+
+        {/* Mobile header: keep every control inside the phone width, but KEEP Install App visible. */}
+        <div className="flex md:hidden items-center gap-1.5 h-[76px] min-w-0">
+          <div className="min-w-0 flex-1 overflow-hidden cursor-pointer" onClick={() => { setActiveRole('customer'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+            <Logo size="sm" />
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <InstallAppButton />
+            <button onClick={() => setIsInstantOrderOpen(true)} className="shrink-0 text-[10px] sm:text-xs bg-[#FDF7E7] text-[#8C5E13] border border-[#C88A24] font-bold px-2 sm:px-3 py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap">
+              <Zap className="w-3 h-3 text-[#C88A24] fill-[#C88A24]" /><span>Instant</span>
+            </button>
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="shrink-0 p-1.5 sm:p-2 rounded-xl text-gray-700 hover:text-black hover:bg-gray-100" aria-label="Toggle Navigation Menu">
+              {mobileMenuOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
+            </button>
           </div>
         </div>
       </div>
+
       {mobileMenuOpen && (
-        <div className="md:hidden w-full overflow-x-hidden bg-[#FAF7F2] border-b border-[#E8E1D5] px-4 pt-3 pb-6 space-y-4 shadow-lg">
+        <div className="md:hidden bg-[#FAF7F2] border-b border-[#E8E1D5] px-4 pt-3 pb-6 space-y-4 shadow-lg overflow-x-hidden">
           <div className="flex flex-col space-y-2.5 font-medium text-sm text-gray-800">
             <button onClick={() => handleNavClick('hero')} className="text-left px-2 py-1.5 hover:text-[#124E33] font-semibold">Home</button>
             <button onClick={() => handleNavClick('today-menu')} className="text-left px-2 py-1.5 hover:text-[#124E33]">Today's Menu</button>
