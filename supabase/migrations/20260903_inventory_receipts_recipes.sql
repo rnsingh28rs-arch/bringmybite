@@ -119,7 +119,6 @@ begin
 
   update public.bmb_inventory
   set current_stock = greatest(0,v_next),
-      quantity = greatest(0,v_next),
       status = case
         when greatest(0,v_next) <= 0 then 'Critical'
         when greatest(0,v_next) <= coalesce(min_threshold,0) then 'Low Stock'
