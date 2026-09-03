@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PackageType } from '../../types';
-import { supabaseInsert, supabasePatch } from '../../cms/supabaseRest';
+import { supabasePatch } from '../../cms/supabaseRest';
 import { adjustStock, stockStatus } from '../../utils/inventoryStock.mjs';
-import { Briefcase, Sliders, DollarSign, Package, Plus, Truck, Check, X, Save } from 'lucide-react';
+import { Briefcase, Sliders, DollarSign, Package, Plus, Truck, Save } from 'lucide-react';
+import { InventoryPaymentApprovalPanel } from './InventoryPaymentApprovalPanel';
 
 const PRICE_UNITS = ['kg', 'grams', 'packets', 'pieces', 'liters', 'boxes'];
-const categoryFor = (name: string) => /chicken|egg|paneer|milk|poultry/i.test(name) ? 'Dairy & Poultry' : /rice|atta|dal|flour|grain|pulse/i.test(name) ? 'Grains & Pulses' : /oil|masala|spice|salt|sugar/i.test(name) ? 'Spices & Oils' : /tray|foil|packet|box|container|papad/i.test(name) ? 'Packaging & Consumables' : 'Fresh Vegetables';
 
 export const ManagerPanel: React.FC = () => {
   const { pricing, updatePricing, inventory, addInventoryItem, subscriptions, instantOrders, chefIndents, vegMenu, eggMenu, nonVegMenu, updateMenuItem } = useApp();
@@ -14,7 +14,6 @@ export const ManagerPanel: React.FC = () => {
   const [vegPrice,setVegPrice]=useState(pricing.vegMonthly),[eggPrice,setEggPrice]=useState(pricing.eggMonthly),[nonVegPrice,setNonVegPrice]=useState(pricing.nonVegMonthly);
   const [vegThali,setVegThali]=useState(pricing.vegThaliInstant),[eggThali,setEggThali]=useState(pricing.eggThaliInstant),[nonVegThali,setNonVegThali]=useState(pricing.nonVegThaliInstant);
   const [newName,setNewName]=useState(''),[newQty,setNewQty]=useState(''),[newUnit,setNewUnit]=useState('kg'),[newCategory,setNewCategory]=useState('Grains & Pulses'),[newThreshold,setNewThreshold]=useState('');
-  const [costs,setCosts]=useState<Record<string,string>>({}),[costUnits,setCostUnits]=useState<Record<string,string>>({}),[stockQtys,setStockQtys]=useState<Record<string,string>>({});
   const [message,setMessage]=useState('');
   const [editPackage,setEditPackage]=useState<PackageType>('VEG CLASSIC'),[editDay,setEditDay]=useState('Monday'),[editMeal,setEditMeal]=useState<'lunch'|'dinner'>('lunch');
   const [menu,setMenu]=useState({dal:'',dryVeg:'',gravyOrNonVeg:'',rice:'',foilPacked:'',extras:''});
@@ -24,41 +23,8 @@ export const ManagerPanel: React.FC = () => {
   const addSku=async(e:React.FormEvent)=>{e.preventDefault();if(!newName.trim()||!newQty)return;await addInventoryItem({name:newName,category:newCategory,quantity:Number(newQty),unit:newUnit,reorderThreshold:Number(newThreshold)||0});setNewName('');setNewQty('');setNewThreshold('');flash('Inventory item added.');};
   const loadMenu=()=>{const list=editPackage==='VEG CLASSIC'?vegMenu:editPackage==='EGG DELIGHT'?eggMenu:nonVegMenu;const s=list.find(x=>x.day===editDay);const m=s?(editMeal==='lunch'?s.lunch:s.dinner):null;if(m)setMenu({...m});};
   const saveMenu=async(e:React.FormEvent)=>{e.preventDefault();await updateMenuItem(editPackage,editDay,editMeal,menu);flash('Menu updated across website and app.');};
-
-  const approveIndent=async(id:string)=>{try{await supabasePatch('bmb_chef_indents',`id=eq.${encodeURIComponent(id)}`,{status:'Approved',approved_by:'Manager',updated_at:new Date().toISOString()});flash('Ingredient indent approved. Enter received quantity and purchase cost below.');window.setTimeout(()=>window.location.reload(),500);}catch(e){flash(e instanceof Error?e.message:'Approval failed.');}};
-  const rejectIndent=async(id:string)=>{try{await supabasePatch('bmb_chef_indents',`id=eq.${encodeURIComponent(id)}`,{status:'Rejected',approved_by:'Manager',updated_at:new Date().toISOString()});window.location.reload();}catch(e){flash(e instanceof Error?e.message:'Rejection failed.');}};
-
-  const saveStockQuantity=async(id:string, quantity:number, minThreshold:number)=>{
-    const safe=Math.max(0,Number(quantity)||0);
-    const status=stockStatus(safe,minThreshold);
-    await supabasePatch('bmb_inventory',`id=eq.${encodeURIComponent(id)}`,{current_stock:safe,status,updated_at:new Date().toISOString()});
-    flash(`Stock updated to ${safe}.`);
-    window.setTimeout(()=>window.location.reload(),350);
-  };
-  const adjustInventory=async(item:any,delta:number)=>{
-    try{await saveStockQuantity(item.id,adjustStock(item.currentStock,delta),item.minThreshold);}catch(e){flash(e instanceof Error?e.message:'Stock update failed.');}
-  };
-
-  const savePurchaseCost=async(indent:any)=>{
-    try{
-      const raw=Number(costs[indent.id]);
-      const basis=costUnits[indent.id]||indent.unit||'kg';
-      if(!Number.isFinite(raw)||raw<0){flash('Enter a valid purchase price first.');return;}
-      const enteredStock=stockQtys[indent.id];
-      const existing=inventory.find(i=>i.name.trim().toLowerCase()===String(indent.itemName).trim().toLowerCase());
-      if(existing){
-        const quantity=enteredStock===''||enteredStock===undefined?existing.currentStock:Number(enteredStock);
-        if(!Number.isFinite(quantity)||quantity<0){flash('Enter a valid received stock quantity.');return;}
-        await supabasePatch('bmb_inventory',`id=eq.${encodeURIComponent(existing.id)}`,{cost_per_unit:raw,unit:basis,current_stock:quantity,status:stockStatus(quantity,existing.minThreshold),updated_at:new Date().toISOString()});
-      }else{
-        const quantity=Number(enteredStock);
-        if(!Number.isFinite(quantity)||quantity<0){flash('Enter the received stock quantity before saving this new item.');return;}
-        await supabaseInsert('bmb_inventory',{id:`INV-${Date.now()}`,name:indent.itemName,category:categoryFor(indent.itemName),current_stock:quantity,unit:basis,min_threshold:0,cost_per_unit:raw,supplier:'',last_restocked:new Date().toISOString().slice(0,10),status:stockStatus(quantity,0),updated_at:new Date().toISOString()});
-      }
-      flash(`₹${raw.toLocaleString('en-IN')} per ${basis} and stock ${enteredStock||'0'} saved for ${indent.itemName}.`);
-      window.setTimeout(()=>window.location.reload(),500);
-    }catch(e){flash(e instanceof Error?e.message:'Purchase cost/stock save failed.');}
-  };
+  const saveStockQuantity=async(id:string, quantity:number, minThreshold:number)=>{const safe=Math.max(0,Number(quantity)||0);const status=stockStatus(safe,minThreshold);await supabasePatch('bmb_inventory',`id=eq.${encodeURIComponent(id)}`,{current_stock:safe,status,updated_at:new Date().toISOString()});flash(`Stock updated to ${safe}.`);window.setTimeout(()=>window.location.reload(),350);};
+  const adjustInventory=async(item:any,delta:number)=>{try{await saveStockQuantity(item.id,adjustStock(item.currentStock,delta),item.minThreshold);}catch(e){flash(e instanceof Error?e.message:'Stock update failed.');}};
 
   return <div className="bg-[#FAF7F2] min-h-[calc(100vh-80px)] p-4 sm:p-6 lg:p-8"><div className="max-w-7xl mx-auto space-y-6">
     <div className="bg-[#0C3822] text-white p-5 rounded-2xl shadow-md flex flex-wrap items-center justify-between gap-4 border-b-4 border-blue-500"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center"><Briefcase/></div><div><span className="text-[10px] uppercase font-bold tracking-widest bg-blue-900 px-2 py-1 rounded">Kitchen Operations & Inventory Manager</span><h1 className="text-xl sm:text-2xl font-bold mt-1">Manager Operations & Stock Control</h1><p className="text-xs text-emerald-200">Menu Pricing • Inventory Management • Order Routing • Chef Indent Approvals</p></div></div><div className="flex items-center bg-[#082416] p-1.5 rounded-xl border border-emerald-800 gap-1 overflow-x-auto">{[['inventory','1. Inventory Stock',Package],['pricing_menu','2. Pricing & Menu',DollarSign],['orders_dispatch','3. Order Routing',Truck],['chef_indents','4. Chef Indents',Sliders]].map(([tab,label,Icon]:any)=><button key={tab} onClick={()=>setActiveTab(tab)} className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap ${activeTab===tab?'bg-blue-600 text-white':'text-emerald-200'}`}><Icon className="w-3.5 h-3.5"/>{label}</button>)}</div></div>
@@ -70,7 +36,7 @@ export const ManagerPanel: React.FC = () => {
 
     {activeTab==='orders_dispatch'&&<div className="bg-white p-5 rounded-2xl border overflow-x-auto"><h3 className="font-bold uppercase text-sm mb-4">Active Monthly Subscriptions & Gate Delivery Points ({subscriptions.length})</h3><table className="w-full text-left text-xs"><thead><tr className="bg-gray-100"><th className="p-2">Customer</th><th className="p-2">Phone</th><th className="p-2">Package</th><th className="p-2">Lunch</th><th className="p-2">Dinner</th><th className="p-2">Route</th><th className="p-2">Status</th></tr></thead><tbody>{subscriptions.map(s=><tr key={s.id} className="border-b"><td className="p-2 font-bold">{s.customerName}</td><td className="p-2">{s.mobileNumber}</td><td className="p-2">{s.packageType}</td><td className="p-2">{s.lunchDeliveryPoint||'—'}</td><td className="p-2">{[s.houseFlatNo,s.buildingSociety,s.streetArea].filter(Boolean).join(', ')||'—'}</td><td className="p-2 font-bold">{s.routeCode}</td><td className="p-2">{s.verificationStatus}</td></tr>)}</tbody></table><h3 className="font-bold uppercase text-sm mt-8 mb-4">Instant Orders ({instantOrders.length})</h3><table className="w-full text-left text-xs"><tbody>{instantOrders.map(o=><tr key={o.id} className="border-b"><td className="p-2">{o.id}</td><td className="p-2">{o.customerName}</td><td className="p-2">{o.quantity}× {o.thaliName}</td><td className="p-2">₹{o.totalPrice}</td><td className="p-2">{o.status}</td></tr>)}</tbody></table></div>}
 
-    {activeTab==='chef_indents'&&<div className="bg-white p-5 rounded-2xl border overflow-x-auto"><div className="flex items-center justify-between mb-4"><div><h3 className="font-bold uppercase text-sm">Chef Ingredient Approval & Purchase</h3><p className="text-xs text-gray-500">Workflow: Chef submits → Manager approves → enter received quantity + purchase cost/unit.</p></div><span className="text-xs font-bold">{chefIndents.length} requests</span></div><table className="w-full text-left text-xs"><thead><tr className="bg-gray-100"><th className="p-2">Ingredient / Item</th><th className="p-2">Requested Qty</th><th className="p-2">Priority</th><th className="p-2">Chef</th><th className="p-2">Status</th><th className="p-2 min-w-[420px]">Manager Action</th></tr></thead><tbody>{chefIndents.map(indent=>{const id=indent.id;const unit=costUnits[id]||indent.unit||'kg';const approved=indent.status==='Approved'||indent.status==='Ordered'||indent.status==='Purchased'||indent.status==='Delivered';const existing=inventory.find(i=>i.name.trim().toLowerCase()===String(indent.itemName).trim().toLowerCase());return <tr key={id} className="border-b align-top"><td className="p-2 font-bold">{indent.itemName}<div className="text-[10px] text-gray-500">{indent.notes||'No note'}</div></td><td className="p-2 font-black">{indent.quantityNeeded} {indent.unit}</td><td className="p-2">{indent.priority}</td><td className="p-2">{indent.chefName||'Chef'}</td><td className="p-2"><span className={`px-2 py-1 rounded text-[10px] font-bold ${approved?'bg-emerald-100 text-emerald-800':indent.status==='Rejected'?'bg-red-100 text-red-800':'bg-amber-100 text-amber-800'}`}>{indent.status}</span></td><td className="p-2">{indent.status==='Pending Approval'&&<div className="flex gap-2"><button onClick={()=>approveIndent(id)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold"><Check className="inline w-3.5 h-3.5"/> Approve</button><button onClick={()=>rejectIndent(id)} className="px-3 py-1.5 bg-red-600 text-white rounded-lg font-bold"><X className="inline w-3.5 h-3.5"/> Reject</button></div>}{approved&&<div className="flex flex-wrap gap-2 items-center"><label className="text-[10px] font-bold">Received Qty<input type="number" min="0" step="0.01" placeholder={existing?String(existing.currentStock):'0'} value={stockQtys[id]??''} onChange={e=>setStockQtys({...stockQtys,[id]:e.target.value})} className="block w-24 p-1.5 border rounded-lg"/></label><label className="text-[10px] font-bold">Purchase Price<input type="number" min="0" step="0.01" placeholder="₹ price" value={costs[id]||''} onChange={e=>setCosts({...costs,[id]:e.target.value})} className="block w-24 p-1.5 border rounded-lg"/></label><label className="text-[10px] font-bold">Price / Stock Unit<select value={unit} onChange={e=>setCostUnits({...costUnits,[id]:e.target.value})} className="block p-1.5 border rounded-lg">{PRICE_UNITS.map(u=><option key={u}>{u}</option>)}</select></label><button onClick={()=>savePurchaseCost(indent)} className="px-2.5 py-1.5 bg-emerald-700 text-white rounded-lg font-bold"><Save className="inline w-3.5 h-3.5"/> Save Cost + Stock</button></div>}</td></tr>})}</tbody></table></div>}
+    {activeTab==='chef_indents'&&<InventoryPaymentApprovalPanel mode="manager" />}
   </div></div>;
 };
 
