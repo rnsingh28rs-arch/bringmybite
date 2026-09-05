@@ -8,8 +8,8 @@ import confetti from 'canvas-confetti';
 import { addStoredOrder, saveLastOrderTracking } from '../../utils/orderStore';
 
 export const RegistrationModal: React.FC = () => {
-  const { registrationFields, banners } = useCms();
-  const { isRegistrationOpen, setIsRegistrationOpen, selectedPackageForRegistration, addSubscription } = useApp();
+  const { registrationFields } = useCms();
+  const { isRegistrationOpen, setIsRegistrationOpen, selectedPackageForRegistration, addSubscription, pricing } = useApp();
   const [fullName, setFullName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -32,8 +32,7 @@ export const RegistrationModal: React.FC = () => {
   useEffect(() => { setPackageType(selectedPackageForRegistration); }, [selectedPackageForRegistration]);
   if (!isRegistrationOpen) return null;
 
-  const selectedBanner = banners.find((b) => b.active && b.package_key === packageType);
-  const baseMonthlyPrice = Number(String(selectedBanner?.highlight_price || '').replace(/[^0-9.]/g, '')) || 0;
+  const baseMonthlyPrice = packageType === 'VEG CLASSIC' ? pricing.vegMonthly : packageType === 'EGG DELIGHT' ? pricing.eggMonthly : pricing.nonVegMonthly;
   const durationMultiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;
   const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 0.90 : 1;
   const calculatedTotal = Math.round(baseMonthlyPrice * durationMultiplier * discountFactor);
@@ -101,7 +100,7 @@ export const RegistrationModal: React.FC = () => {
               <div className="bg-white rounded-xl border p-4 shadow-sm space-y-4">
                 <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[#124E33]" /><span className="text-xs font-bold uppercase tracking-wider text-gray-700">Subscription Plan</span></div>
                 <div className="grid grid-cols-3 gap-2">
-                  {(['VEG CLASSIC','EGG DELIGHT','NON-VEG CLUB'] as PackageType[]).map((pkg) => { const b=banners.find(x=>x.active&&x.package_key===pkg); return <button key={pkg} type="button" onClick={()=>setPackageType(pkg)} className={`p-3 rounded-xl border-2 ${packageType===pkg?'border-emerald-600 bg-emerald-50':'border-gray-200 bg-white'}`}><div className="text-xs font-bold">{pkg}</div><div className="text-lg font-extrabold text-emerald-800 mt-1">{b?.highlight_price || 'Price not set'}</div></button>; })}
+                  {(['VEG CLASSIC','EGG DELIGHT','NON-VEG CLUB'] as PackageType[]).map((pkg) => { const price=pkg==='VEG CLASSIC'?pricing.vegMonthly:pkg==='EGG DELIGHT'?pricing.eggMonthly:pricing.nonVegMonthly; return <button key={pkg} type="button" onClick={()=>setPackageType(pkg)} className={`p-3 rounded-xl border-2 ${packageType===pkg?'border-emerald-600 bg-emerald-50':'border-gray-200 bg-white'}`}><div className="text-xs font-bold">{pkg}</div><div className="text-lg font-extrabold text-emerald-800 mt-1">₹{price.toLocaleString()}</div></button>; })}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end"><label className="text-xs font-semibold text-gray-700">Duration<select value={duration} onChange={(e)=>setDuration(e.target.value as SubscriptionDuration)} className="mt-1 w-full border border-gray-300 rounded-lg p-2"><option>1 Month</option><option>3 Months</option><option>6 Months</option></select></label><div className="text-xs text-gray-500">Monthly rate<strong className="block text-gray-900 text-base">₹{baseMonthlyPrice.toLocaleString()}</strong></div><div className="text-xs text-gray-500">Total payable<strong className="block text-emerald-800 text-xl">₹{calculatedTotal.toLocaleString()}</strong>{discountLabel && <span className="text-emerald-700">{discountLabel}</span>}</div></div>
               </div>

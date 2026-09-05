@@ -117,16 +117,21 @@ export const HeroBanner: React.FC = () => {
       cardBorder: 'border-[#C88A24]/40',
       image: FOOD_IMAGES.instantTiffin,
       imageAlt: 'Fresh Hot 5-Compartment Disposable Meal Tray Packed Ready for Fast Gate Delivery',
-      dishHighlights: ['Veg Thali (₹80)', 'Egg Thali (₹100)', 'Non-Veg Thali (₹110)', 'Steaming Hot Gate Drop']
+      dishHighlights: [`Veg Thali (₹${pricing.vegThaliInstant})`, `Egg Thali (₹${pricing.eggThaliInstant})`, `Non-Veg Thali (₹${pricing.nonVegThaliInstant})`, 'Steaming Hot Gate Drop']
     }
   ];
 
   const cmsBanners = cms.banners.filter((b) => b.active);
+  const packagePrice = (key: 'VEG CLASSIC' | 'EGG DELIGHT' | 'NON-VEG CLUB') => key === 'VEG CLASSIC' ? pricing.vegMonthly : key === 'EGG DELIGHT' ? pricing.eggMonthly : pricing.nonVegMonthly;
+  const thaliPrice = (key: 'veg' | 'egg' | 'non-veg') => key === 'veg' ? pricing.vegThaliInstant : key === 'egg' ? pricing.eggThaliInstant : pricing.nonVegThaliInstant;
   const banners = cmsBanners.length ? cmsBanners.map((b) => ({
     ...b,
     tagColor: b.tag_color, badgeBg: b.badge_bg, accentColor: b.accent_color, btnAccent: b.button_accent,
-    cardBorder: b.card_border, image: b.image_url, imageAlt: b.image_alt, dishHighlights: b.dish_highlights,
-    highlightPrice: b.highlight_price, packageKey: b.package_key, thaliKey: b.thali_key
+    cardBorder: b.card_border, image: b.image_url, imageAlt: b.image_alt,
+    dishHighlights: b.id === 'instant' ? [`Veg Thali (₹${pricing.vegThaliInstant})`, `Egg Thali (₹${pricing.eggThaliInstant})`, `Non-Veg Thali (₹${pricing.nonVegThaliInstant})`, 'Steaming Hot Gate Drop'] : b.dish_highlights,
+    highlightPrice: b.id === 'instant' ? `From ₹${pricing.vegThaliInstant}` : `₹${packagePrice(b.package_key)}`,
+    thaliRate: b.id === 'instant' ? `Veg: ₹${pricing.vegThaliInstant} | Egg: ₹${pricing.eggThaliInstant} | Non-Veg: ₹${pricing.nonVegThaliInstant}` : `₹${thaliPrice(b.thali_key)} Instant Single Thali`,
+    packageKey: b.package_key, thaliKey: b.thali_key
   })) : fallbackBanners;
 
   // Keep the selected slide valid if D-Admin removes/reorders banners.

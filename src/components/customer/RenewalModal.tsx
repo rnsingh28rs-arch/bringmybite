@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useApp, calculateExpiryDate, getDaysRemaining } from '../../context/AppContext';
-import { useCms } from '../../cms/CmsContext';
 import { Subscription, SubscriptionDuration, PaymentMethod } from '../../types';
 import { PaymentDetailsCard } from '../common/PaymentDetailsCard';
 import { addStoredOrder, saveLastOrderTracking } from '../../utils/orderStore';
@@ -8,8 +7,7 @@ import { X, Calendar, CreditCard, CheckCircle, Printer } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const RenewalModal: React.FC = () => {
-  const { banners } = useCms();
-  const { isRenewalModalOpen, setIsRenewalModalOpen, selectedSubscriptionForRenewal, setSelectedSubscriptionForRenewal, subscriptions, renewSubscription } = useApp();
+  const { isRenewalModalOpen, setIsRenewalModalOpen, selectedSubscriptionForRenewal, setSelectedSubscriptionForRenewal, subscriptions, renewSubscription, pricing } = useApp();
   const activeSub: Subscription | undefined = selectedSubscriptionForRenewal || subscriptions.find(s => getDaysRemaining(s.expiryDate) <= 3) || subscriptions[0];
   const [duration, setDuration] = useState<SubscriptionDuration>('1 Month');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
@@ -20,8 +18,7 @@ export const RenewalModal: React.FC = () => {
 
   if (!isRenewalModalOpen || !activeSub) return null;
 
-  const configuredPriceText = banners.find((b) => b.active && b.package_key === activeSub.packageType)?.highlight_price || '';
-  const monthlyPrice = Number(String(configuredPriceText).replace(/[^0-9.]/g, '')) || 0;
+  const monthlyPrice = activeSub.packageType === 'VEG CLASSIC' ? pricing.vegMonthly : activeSub.packageType === 'EGG DELIGHT' ? pricing.eggMonthly : pricing.nonVegMonthly;
   const durationMultiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;
   const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 0.90 : 1;
   const totalRenewalAmount = Math.round(monthlyPrice * durationMultiplier * discountFactor);

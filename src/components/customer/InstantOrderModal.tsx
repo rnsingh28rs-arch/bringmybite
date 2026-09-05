@@ -9,8 +9,8 @@ import { PaymentMethod } from '../../types';
 import { addStoredOrder, saveLastOrderTracking } from '../../utils/orderStore';
 
 export const InstantOrderModal: React.FC = () => {
-  const { isInstantOrderOpen, setIsInstantOrderOpen, preselectedThaliType, addInstantOrder } = useApp();
-  const { banners, payment } = useCms();
+  const { isInstantOrderOpen, setIsInstantOrderOpen, preselectedThaliType, addInstantOrder, pricing } = useApp();
+  const { payment } = useCms();
   const [thaliType, setThaliType] = useState<'veg' | 'egg' | 'non-veg'>(preselectedThaliType);
   const [quantity, setQuantity] = useState(1);
   const [customerName, setCustomerName] = useState('');
@@ -29,8 +29,7 @@ export const InstantOrderModal: React.FC = () => {
   useEffect(() => { if (isInstantOrderOpen) setThaliType(preselectedThaliType); }, [isInstantOrderOpen, preselectedThaliType]);
   if (!isInstantOrderOpen) return null;
 
-  const configuredRateText = banners.find((b) => b.active && b.thali_key === thaliType)?.thali_rate || '';
-  const unitPrice = Number(String(configuredRateText).replace(/[^0-9.]/g, '')) || 0;
+  const unitPrice = thaliType === 'veg' ? pricing.vegThaliInstant : thaliType === 'egg' ? pricing.eggThaliInstant : pricing.nonVegThaliInstant;
   const totalAmount = unitPrice * quantity;
   const thaliDisplayName = thaliType === 'veg' ? 'Veg Classic Thali' : thaliType === 'egg' ? 'Egg Delight Thali' : 'Chicken Non-Veg Thali (3 pcs)';
 
@@ -73,7 +72,7 @@ export const InstantOrderModal: React.FC = () => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Select Thali Variant:</label><div className="grid grid-cols-3 gap-2.5">
-                {(['veg','egg','non-veg'] as const).map((type) => { const b=banners.find(x=>x.active&&x.thali_key===type); const label=type==='veg'?'Veg Thali':type==='egg'?'Egg Thali':'Non-Veg Thali'; const image=type==='veg'?FOOD_IMAGES.vegThali:type==='egg'?FOOD_IMAGES.eggThali:FOOD_IMAGES.nonVegThali; return <button key={type} type="button" onClick={()=>setThaliType(type)} className={`rounded-2xl border-2 text-left overflow-hidden transition-all relative ${thaliType===type?'border-emerald-600 bg-emerald-50 text-emerald-900 shadow-md ring-2 ring-emerald-500/20 scale-[1.02]':'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`}><div className="h-16 w-full relative overflow-hidden bg-gray-100"><img src={image} alt={label} referrerPolicy="no-referrer" className="w-full h-full object-cover" />{thaliType===type&&<div className="absolute top-1.5 right-1.5 bg-emerald-600 text-white rounded-full p-0.5"><Check className="w-3 h-3" /></div>}</div><div className="p-2 text-center"><span className="text-xs font-bold block leading-tight">{label}</span><span className="text-xs text-emerald-700 font-extrabold block mt-0.5">{b?.thali_rate || 'Price not set'}</span></div></button>; })}
+                {(['veg','egg','non-veg'] as const).map((type) => { const price=type==='veg'?pricing.vegThaliInstant:type==='egg'?pricing.eggThaliInstant:pricing.nonVegThaliInstant; const label=type==='veg'?'Veg Thali':type==='egg'?'Egg Thali':'Non-Veg Thali'; const image=type==='veg'?FOOD_IMAGES.vegThali:type==='egg'?FOOD_IMAGES.eggThali:FOOD_IMAGES.nonVegThali; return <button key={type} type="button" onClick={()=>setThaliType(type)} className={`rounded-2xl border-2 text-left overflow-hidden transition-all relative ${thaliType===type?'border-emerald-600 bg-emerald-50 text-emerald-900 shadow-md ring-2 ring-emerald-500/20 scale-[1.02]':'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`}><div className="h-16 w-full relative overflow-hidden bg-gray-100"><img src={image} alt={label} referrerPolicy="no-referrer" className="w-full h-full object-cover" />{thaliType===type&&<div className="absolute top-1.5 right-1.5 bg-emerald-600 text-white rounded-full p-0.5"><Check className="w-3 h-3" /></div>}</div><div className="p-2 text-center"><span className="text-xs font-bold block leading-tight">{label}</span><span className="text-xs text-emerald-700 font-extrabold block mt-0.5">₹{price.toLocaleString()}</span></div></button>; })}
               </div></div>
               <div className="bg-white rounded-2xl p-4 border border-gray-200 space-y-3"><div className="flex items-center justify-between"><div><div className="text-sm font-bold text-gray-800">Price per thali: <span className="text-emerald-800">₹{unitPrice.toLocaleString()}</span></div><div className="text-sm font-bold text-gray-800 mt-1">Total payable: <span className="text-emerald-800">₹{totalAmount.toLocaleString()}</span></div></div><div className="flex items-center gap-3"><button type="button" onClick={()=>setQuantity(Math.max(1,quantity-1))} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center border"><Minus className="w-4 h-4" /></button><span className="font-bold w-6 text-center">{quantity}</span><button type="button" onClick={()=>setQuantity(quantity+1)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center border"><Plus className="w-4 h-4" /></button></div></div></div>
               <PaymentDetailsCard amount={totalAmount} orderReference={`${quantity}x ${thaliDisplayName}`} />
