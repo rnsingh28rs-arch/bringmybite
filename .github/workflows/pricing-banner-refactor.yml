@@ -1,4 +1,4 @@
-name: Pricing Wiring Test
+name: Central Pricing Wiring
 
 on:
   push:
@@ -7,17 +7,86 @@ on:
       - '.github/workflows/pricing-banner-refactor.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  red-test:
+  wire-pricing:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Run pricing wiring regression test
-        run: node --test tests/livePricingWiring.test.mjs
+      - name: Wire all customer prices to central CMS pricing
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              s = p.read_text()
+              if old not in s:
+                  raise SystemExit(f'Expected text not found in {path}: {old[:160]}')
+              p.write_text(s.replace(old, new, 1))
+
+          # AppContext must expose bmb_pricing directly. Banner rows are content,
+          # not a second pricing database.
+          replace_once(
+              'src/context/AppContext.tsx',
+              "const vegMenu=cms.menus['VEG CLASSIC'],eggMenu=cms.menus['EGG DELIGHT'],nonVegMenu=cms.menus['NON-VEG CLUB']; const bannerPrice=(value:string|undefined)=>{const n=Number(String(value??'').replace(/[^0-9.]/g,''));return Number.isFinite(n)&&n>=0?n:0;}; const vegBanner=cms.banners.find(b=>b.active&&b.package_key==='VEG CLASSIC'),eggBanner=cms.banners.find(b=>b.active&&b.package_key==='EGG DELIGHT'),nonVegBanner=cms.banners.find(b=>b.active&&b.package_key==='NON-VEG CLUB'),vegThali=cms.banners.find(b=>b.active&&b.thali_key==='veg'),eggThali=cms.banners.find(b=>b.active&&b.thali_key==='egg'),nonVegThali=cms.banners.find(b=>b.active&&b.thali_key==='non-veg'); const pricing:PlanPricing={vegMonthly:bannerPrice(vegBanner?.highlight_price),eggMonthly:bannerPrice(eggBanner?.highlight_price),nonVegMonthly:bannerPrice(nonVegBanner?.highlight_price),vegThaliInstant:bannerPrice(vegThali?.thali_rate),eggThaliInstant:bannerPrice(eggThali?.thali_rate),nonVegThaliInstant:bannerPrice(nonVegThali?.thali_rate)};",
+              "const vegMenu=cms.menus['VEG CLASSIC'],eggMenu=cms.menus['EGG DELIGHT'],nonVegMenu=cms.menus['NON-VEG CLUB']; const pricing:PlanPricing={vegMonthly:Number(cms.pricing.vegMonthly||0),eggMonthly:Number(cms.pricing.eggMonthly||0),nonVegMonthly:Number(cms.pricing.nonVegMonthly||0),vegThaliInstant:Number(cms.pricing.vegThaliInstant||0),eggThaliInstant:Number(cms.pricing.eggThaliInstant||0),nonVegThaliInstant:Number(cms.pricing.nonVegThaliInstant||0)};"
+          )
+
+          # Hero keeps banner artwork/text but always renders live central prices.
+          replace_once(
+              'src/components/customer/HeroBanner.tsx',
+              "  const cmsBanners = cms.banners.filter((b) => b.active);\n  const banners = cmsBanners.length ? cmsBanners.map((b) => ({\n    ...b,\n    tagColor: b.tag_color, badgeBg: b.badge_bg, accentColor: b.accent_color, btnAccent: b.button_accent,\n    cardBorder: b.card_border, image: b.image_url, imageAlt: b.image_alt, dishHighlights: b.dish_highlights,\n    highlightPrice: b.highlight_price, packageKey: b.package_key, thaliKey: b.thali_key\n  })) : fallbackBanners;",
+              "  const cmsBanners = cms.banners.filter((b) => b.active);\n  const packagePrice = (key: 'VEG CLASSIC' | 'EGG DELIGHT' | 'NON-VEG CLUB') => key === 'VEG CLASSIC' ? pricing.vegMonthly : key === 'EGG DELIGHT' ? pricing.eggMonthly : pricing.nonVegMonthly;\n  const thaliPrice = (key: 'veg' | 'egg' | 'non-veg') => key === 'veg' ? pricing.vegThaliInstant : key === 'egg' ? pricing.eggThaliInstant : pricing.nonVegThaliInstant;\n  const banners = cmsBanners.length ? cmsBanners.map((b) => ({\n    ...b,\n    tagColor: b.tag_color, badgeBg: b.badge_bg, accentColor: b.accent_color, btnAccent: b.button_accent,\n    cardBorder: b.card_border, image: b.image_url, imageAlt: b.image_alt,\n    dishHighlights: b.id === 'instant' ? [`Veg Thali (₹${pricing.vegThaliInstant})`, `Egg Thali (₹${pricing.eggThaliInstant})`, `Non-Veg Thali (₹${pricing.nonVegThaliInstant})`, 'Steaming Hot Gate Drop'] : b.dish_highlights,\n    highlightPrice: b.id === 'instant' ? `From ₹${pricing.vegThaliInstant}` : `₹${packagePrice(b.package_key)}`,\n    thaliRate: b.id === 'instant' ? `Veg: ₹${pricing.vegThaliInstant} | Egg: ₹${pricing.eggThaliInstant} | Non-Veg: ₹${pricing.nonVegThaliInstant}` : `₹${thaliPrice(b.thali_key)} Instant Single Thali`,\n    packageKey: b.package_key, thaliKey: b.thali_key\n  })) : fallbackBanners;"
+          )
+
+          # Remove legacy hard-coded fallback prices from the instant banner.
+          replace_once(
+              'src/components/customer/HeroBanner.tsx',
+              "      dishHighlights: ['Veg Thali (₹80)', 'Egg Thali (₹100)', 'Non-Veg Thali (₹110)', 'Steaming Hot Gate Drop']",
+              "      dishHighlights: [`Veg Thali (₹${pricing.vegThaliInstant})`, `Egg Thali (₹${pricing.eggThaliInstant})`, `Non-Veg Thali (₹${pricing.nonVegThaliInstant})`, 'Steaming Hot Gate Drop']"
+          )
+
+          # Registration uses central monthly pricing for both display and payment amount.
+          replace_once('src/components/customer/RegistrationModal.tsx', "  const { registrationFields, banners } = useCms();", "  const { registrationFields } = useCms();")
+          replace_once('src/components/customer/RegistrationModal.tsx', "  const { isRegistrationOpen, setIsRegistrationOpen, selectedPackageForRegistration, addSubscription } = useApp();", "  const { isRegistrationOpen, setIsRegistrationOpen, selectedPackageForRegistration, addSubscription, pricing } = useApp();")
+          replace_once('src/components/customer/RegistrationModal.tsx', "  const selectedBanner = banners.find((b) => b.active && b.package_key === packageType);\n  const baseMonthlyPrice = Number(String(selectedBanner?.highlight_price || '').replace(/[^0-9.]/g, '')) || 0;", "  const baseMonthlyPrice = packageType === 'VEG CLASSIC' ? pricing.vegMonthly : packageType === 'EGG DELIGHT' ? pricing.eggMonthly : pricing.nonVegMonthly;")
+          replace_once('src/components/customer/RegistrationModal.tsx', "{(['VEG CLASSIC','EGG DELIGHT','NON-VEG CLUB'] as PackageType[]).map((pkg) => { const b=banners.find(x=>x.active&&x.package_key===pkg); return <button", "{(['VEG CLASSIC','EGG DELIGHT','NON-VEG CLUB'] as PackageType[]).map((pkg) => { const price=pkg==='VEG CLASSIC'?pricing.vegMonthly:pkg==='EGG DELIGHT'?pricing.eggMonthly:pricing.nonVegMonthly; return <button")
+          replace_once('src/components/customer/RegistrationModal.tsx', "<div className=\"text-lg font-extrabold text-emerald-800 mt-1\">{b?.highlight_price || 'Price not set'}</div>", "<div className=\"text-lg font-extrabold text-emerald-800 mt-1\">₹{price.toLocaleString()}</div>")
+
+          # Instant order uses central per-thali pricing for display and payment.
+          replace_once('src/components/customer/InstantOrderModal.tsx', "  const { isInstantOrderOpen, setIsInstantOrderOpen, preselectedThaliType, addInstantOrder } = useApp();", "  const { isInstantOrderOpen, setIsInstantOrderOpen, preselectedThaliType, addInstantOrder, pricing } = useApp();")
+          replace_once('src/components/customer/InstantOrderModal.tsx', "  const { banners, payment } = useCms();", "  const { payment } = useCms();")
+          replace_once('src/components/customer/InstantOrderModal.tsx', "  const configuredRateText = banners.find((b) => b.active && b.thali_key === thaliType)?.thali_rate || '';\n  const unitPrice = Number(String(configuredRateText).replace(/[^0-9.]/g, '')) || 0;", "  const unitPrice = thaliType === 'veg' ? pricing.vegThaliInstant : thaliType === 'egg' ? pricing.eggThaliInstant : pricing.nonVegThaliInstant;")
+          replace_once('src/components/customer/InstantOrderModal.tsx', "{(['veg','egg','non-veg'] as const).map((type) => { const b=banners.find(x=>x.active&&x.thali_key===type); const label=type==='veg'?'Veg Thali':type==='egg'?'Egg Thali':'Non-Veg Thali';", "{(['veg','egg','non-veg'] as const).map((type) => { const price=type==='veg'?pricing.vegThaliInstant:type==='egg'?pricing.eggThaliInstant:pricing.nonVegThaliInstant; const label=type==='veg'?'Veg Thali':type==='egg'?'Egg Thali':'Non-Veg Thali';")
+          replace_once('src/components/customer/InstantOrderModal.tsx', "<span className=\"text-xs text-emerald-700 font-extrabold block mt-0.5\">{b?.thali_rate || 'Price not set'}</span>", "<span className=\"text-xs text-emerald-700 font-extrabold block mt-0.5\">₹{price.toLocaleString()}</span>")
+
+          # Renewal uses the same central monthly price source.
+          replace_once('src/components/customer/RenewalModal.tsx', "import { useCms } from '../../cms/CmsContext';\n", '')
+          replace_once('src/components/customer/RenewalModal.tsx', "  const { banners } = useCms();\n", '')
+          replace_once('src/components/customer/RenewalModal.tsx', "  const { isRenewalModalOpen, setIsRenewalModalOpen, selectedSubscriptionForRenewal, setSelectedSubscriptionForRenewal, subscriptions, renewSubscription } = useApp();", "  const { isRenewalModalOpen, setIsRenewalModalOpen, selectedSubscriptionForRenewal, setSelectedSubscriptionForRenewal, subscriptions, renewSubscription, pricing } = useApp();")
+          replace_once('src/components/customer/RenewalModal.tsx', "  const configuredPriceText = banners.find((b) => b.active && b.package_key === activeSub.packageType)?.highlight_price || '';\n  const monthlyPrice = Number(String(configuredPriceText).replace(/[^0-9.]/g, '')) || 0;", "  const monthlyPrice = activeSub.packageType === 'VEG CLASSIC' ? pricing.vegMonthly : activeSub.packageType === 'EGG DELIGHT' ? pricing.eggMonthly : pricing.nonVegMonthly;")
+
+          # Keep the regression test; remove this temporary workflow after verification.
+
+      - name: Verify tests, typecheck and production build
+        run: |
+          npm test
+          npm run lint
+          npm run build
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src tests .github/workflows/pricing-banner-refactor.yml
+          git rm .github/workflows/pricing-banner-refactor.yml
+          git commit -m 'fix: connect website pricing to central CMS [skip pricing refactor]'
+          git push origin main
