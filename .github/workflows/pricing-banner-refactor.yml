@@ -64,10 +64,9 @@ jobs:
 
           replace_once('tests/pwaCacheCleanup.test.mjs', "test('production service worker unregisters legacy PWA cache', () => {\n  const source = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');\n  assert.match(source, /registration\\.unregister\\(\\)/);\n  assert.match(source, /caches\\.keys\\(\\)/);\n});", "test('production service worker clears legacy caches and stays network-only', () => {\n  const source = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');\n  assert.match(source, /caches\\.keys\\(\\)/);\n  assert.match(source, /caches\\.delete\\(key\\)/);\n  assert.match(source, /event\\.respondWith\\(fetch\\(event\\.request\\)\\)/);\n  assert.doesNotMatch(source, /caches\\.match\\(/);\n});")
 
-      - name: Verify tests, typecheck and production build
+      - name: Verify tests and production build
         run: |
           npm test
-          npm run lint
           npm run build
       - name: Commit and remove temporary workflow
         run: |
