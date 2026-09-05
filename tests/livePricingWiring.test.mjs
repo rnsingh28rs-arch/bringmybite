@@ -9,7 +9,7 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf
 
 test('AppContext exposes central CMS pricing instead of banner row prices', () => {
   const source = read('src/context/AppContext.tsx');
-  assert.match(source, /const pricing:PlanPricing=\{[^}]*vegMonthly:cms\.pricing\.vegMonthly/);
+  assert.match(source, /const pricing:PlanPricing=\{[^}]*vegMonthly:Number\(cms\.pricing\.vegMonthly/);
   assert.doesNotMatch(source, /const vegBanner=cms\.banners\.find/);
 });
 
