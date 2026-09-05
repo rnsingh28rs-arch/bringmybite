@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Logo } from './Logo';
 import { useApp } from '../../context/AppContext';
 import { Menu, X, Zap, CalendarCheck, Lock } from 'lucide-react';
+import { InstallAppButton } from './InstallAppButton';
 
 interface HeaderProps { onNavigateSection?: (sectionId: string) => void; }
 
@@ -23,13 +24,14 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateSection }) => {
           <button onClick={()=>handleNavClick('hero')} className="text-[#124E33] py-1">Home</button><button onClick={()=>handleNavClick('today-menu')} className="text-gray-700 py-1">Today's Menu</button><button onClick={()=>handleNavClick('packages')} className="text-gray-700 py-1">Our Packages</button><button onClick={()=>handleNavClick('delivery-model')} className="text-gray-700 py-1">How It Works</button><button onClick={()=>handleNavClick('why-us')} className="text-gray-700 py-1">About Us</button><button onClick={()=>handleNavClick('contact')} className="text-gray-700 py-1">Contact Us</button>
         </nav>
         <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+          <InstallAppButton />
           <button onClick={()=>setIsInstantOrderOpen(true)} className="flex items-center gap-1.5 text-xs font-bold px-3 lg:px-4 py-2.5 rounded-xl border border-[#C88A24] text-[#8C5E13] bg-[#FDF7E7]"><Zap className="w-4 h-4 text-[#C88A24] fill-[#C88A24]"/><span>Instant Thali</span></button>
           <button onClick={()=>setIsRegistrationOpen(true)} className="hidden lg:flex items-center gap-2 bg-[#124E33] text-white text-xs font-bold px-4.5 py-2.5 rounded-xl"><CalendarCheck className="w-4 h-4 text-[#F2C94C]"/><span>Subscribe Now</span></button>
         </div>
       </div>
       <div className="flex md:hidden items-center gap-1.5 h-[76px] min-w-0">
         <div className="min-w-0 flex-1 overflow-hidden cursor-pointer" onClick={()=>{setActiveRole('customer');window.scrollTo({top:0,behavior:'smooth'});}}><Logo size="sm"/></div>
-        <div className="flex items-center gap-1.5 shrink-0"><button onClick={()=>setIsInstantOrderOpen(true)} className="shrink-0 text-[10px] bg-[#FDF7E7] text-[#8C5E13] border border-[#C88A24] font-bold px-2 py-1.5 rounded-lg flex items-center gap-1"><Zap className="w-3 h-3 text-[#C88A24] fill-[#C88A24]"/><span>Instant</span></button><button onClick={()=>setMobileMenuOpen(!mobileMenuOpen)} className="shrink-0 p-1.5 rounded-xl text-gray-700" aria-label="Toggle Navigation Menu">{mobileMenuOpen?<X className="w-5 h-5"/>:<Menu className="w-5 h-5"/>}</button></div>
+        <div className="flex items-center gap-1.5 shrink-0"><InstallAppButton /><button onClick={()=>setIsInstantOrderOpen(true)} className="shrink-0 text-[10px] bg-[#FDF7E7] text-[#8C5E13] border border-[#C88A24] font-bold px-2 py-1.5 rounded-lg flex items-center gap-1"><Zap className="w-3 h-3 text-[#C88A24] fill-[#C88A24]"/><span>Instant</span></button><button onClick={()=>setMobileMenuOpen(!mobileMenuOpen)} className="shrink-0 p-1.5 rounded-xl text-gray-700" aria-label="Toggle Navigation Menu">{mobileMenuOpen?<X className="w-5 h-5"/>:<Menu className="w-5 h-5"/>}</button></div>
       </div>
     </div>
     {mobileMenuOpen && <div className="md:hidden bg-[#FAF7F2] border-b border-[#E8E1D5] px-4 pt-3 pb-6 space-y-4 shadow-lg">
