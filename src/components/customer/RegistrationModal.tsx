@@ -3,9 +3,10 @@ import { useApp } from '../../context/AppContext';
 import { PackageType, CustomerCategory, MealPreference, SubscriptionDuration, PaymentMethod } from '../../types';
 import { PaymentDetailsCard } from '../common/PaymentDetailsCard';
 import { useCms } from '../../cms/CmsContext';
-import { X, CheckCircle, Printer, Calendar } from 'lucide-react';
+import { X, CheckCircle, Printer, Calendar, MapPin, ExternalLink } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { addStoredOrder, saveLastOrderTracking } from '../../utils/orderStore';
+import { createMapLocationLink } from '../../utils/customerLocation.mjs';
 
 export const RegistrationModal: React.FC = () => {
   const { registrationFields } = useCms();
@@ -19,7 +20,10 @@ export const RegistrationModal: React.FC = () => {
   const [homeAddress, setHomeAddress] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
-  const [mapLocationUrl, setMapLocationUrl] = useState('');
+  const [mapLocationLink, setMapLocationLink] = useState('');
+  const [mapLatitude, setMapLatitude] = useState<number | undefined>();
+  const [mapLongitude, setMapLongitude] = useState<number | undefined>();
+  const [isLocating, setIsLocating] = useState(false);
   const [packageType, setPackageType] = useState<PackageType>(selectedPackageForRegistration);
   const [mealPreference] = useState<MealPreference>('Lunch + Dinner');
   const [startDate] = useState(new Date().toISOString().split('T')[0]);
@@ -45,6 +49,22 @@ export const RegistrationModal: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) { alert('Current location is not supported by this browser. You can continue with the delivery address instead.'); return; }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition((position) => {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      setMapLatitude(latitude);
+      setMapLongitude(longitude);
+      setMapLocationLink(createMapLocationLink(latitude, longitude));
+      setIsLocating(false);
+    }, () => {
+      setIsLocating(false);
+      alert('We could not get your current location. Please allow location permission and try again, or continue with your address.');
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (baseMonthlyPrice <= 0) { alert('This subscription price is not configured. Please ask the administrator to configure the current rate.'); return; }
@@ -62,7 +82,8 @@ export const RegistrationModal: React.FC = () => {
       lunchDeliveryPoint: category === 'College Student' ? 'College Gate' : 'Office Gate',
       companyName: category === 'Working Professional' ? companyName : undefined,
       streetArea: homeAddress || (category === 'College Student' ? `${collegeName} Gate Area` : `${companyName} Vicinity`),
-      pinCode: pinCode || '700091', mapLocationUrl: mapLocationUrl.trim() || undefined,
+      pinCode: pinCode || '700091', mapLocationLink: mapLocationLink.trim() || undefined,
+      mapLatitude, mapLongitude,
       packageType, packageCode: packageType === 'VEG CLASSIC' ? 'VC' : packageType === 'EGG DELIGHT' ? 'ED' : 'NVC',
       monthlyPrice: baseMonthlyPrice, mealPreference, startDate, duration, paymentMethod,
       transactionId: transactionId.trim(), amountPaid: calculatedTotal, totalAmount: calculatedTotal,
@@ -71,7 +92,7 @@ export const RegistrationModal: React.FC = () => {
     });
 
     try {
-      await addStoredOrder({ id: sub.id, kind: 'subscription', customerName: fullName, phone: mobileNumber, whatsapp: whatsappNumber || mobileNumber, planOrMeal: `${packageType} • ${duration} • ${mealPreference}`, amount: calculatedTotal, utrNumber: transactionId.trim(), paymentSlip, paymentStatus: 'Pending Verification', status: 'Pending Verification', details: `${category} • ${collegeName || companyName || homeAddress || ''} • ${discountLabel || 'Standard monthly pricing'}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      await addStoredOrder({ id: sub.id, kind: 'subscription', customerName: fullName, phone: mobileNumber, whatsapp: whatsappNumber || mobileNumber, planOrMeal: `${packageType} • ${duration} • ${mealPreference}`, amount: calculatedTotal, utrNumber: transactionId.trim(), paymentSlip, paymentStatus: 'Pending Verification', status: 'Pending Verification', details: `${category} • ${collegeName || companyName || homeAddress || ''}${mapLocationLink ? ` • GPS: ${mapLocationLink}` : ''} • ${discountLabel || 'Standard monthly pricing'}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
       saveLastOrderTracking({ id: sub.id, phone: mobileNumber });
     } catch (error) { console.error('Subscription payment proof persistence failed:', error); alert('Your payment proof could not be saved. Please check your connection and submit again.'); return; }
     try { confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 } }); } catch {}
@@ -92,6 +113,7 @@ export const RegistrationModal: React.FC = () => {
                 <div className="flex justify-between border-b pb-1.5"><span>Monthly rate:</span><strong>₹{Number(registeredSub.monthlyPrice || 0).toLocaleString()}</strong></div>
                 <div className="flex justify-between border-b pb-1.5"><span>Amount paid:</span><strong className="text-emerald-800">₹{Number(registeredSub.amountPaid || 0).toLocaleString()}</strong></div>
                 <div className="flex justify-between"><span>Meal plan:</span><strong>{registeredSub.mealPreference}</strong></div>
+                {registeredSub.mapLocationLink && <a href={registeredSub.mapLocationLink} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-emerald-800 font-bold pt-1"><MapPin className="w-3.5 h-3.5" />Delivery map location <ExternalLink className="w-3 h-3" /></a>}
               </div>
               <div className="flex items-center justify-center gap-3"><button onClick={() => window.print()} className="px-4 py-2 bg-gray-100 text-gray-800 rounded-xl text-xs font-bold flex items-center gap-1.5 border"><Printer className="w-3.5 h-3.5" />Print</button><button onClick={() => { setIsRegistrationOpen(false); setRegisteredSub(null); }} className="px-6 py-2 bg-[#124E33] text-white rounded-xl text-xs font-bold">Close</button></div>
             </div>
@@ -114,6 +136,13 @@ export const RegistrationModal: React.FC = () => {
                 {category==='Working Professional' && <label className="text-xs font-semibold text-gray-700">Company / Office<input value={companyName} onChange={(e)=>setCompanyName(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>}
                 <label className="text-xs font-semibold text-gray-700">Address / Area<input value={homeAddress} onChange={(e)=>setHomeAddress(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
                 <label className="text-xs font-semibold text-gray-700">PIN Code<input value={pinCode} onChange={(e)=>setPinCode(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
+                <div className="sm:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div><div className="text-xs font-bold text-emerald-900 flex items-center gap-1.5"><MapPin className="w-4 h-4" />Delivery Map Location <span className="font-normal text-emerald-700">(Optional)</span></div><p className="text-[11px] text-emerald-800 mt-1">Use your current location so the delivery team can find your gate more easily. We do not track your location continuously.</p></div>
+                    <button type="button" onClick={useCurrentLocation} disabled={isLocating} className="shrink-0 px-3 py-2 rounded-lg bg-[#124E33] text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-60"><MapPin className="w-3.5 h-3.5" />{isLocating ? 'Locating…' : 'Use Current Location'}</button>
+                  </div>
+                  {mapLocationLink && <div className="mt-3 flex flex-wrap items-center gap-2"><span className="text-[11px] font-semibold text-emerald-900">Location captured: {mapLatitude?.toFixed(6)}, {mapLongitude?.toFixed(6)}</span><a href={mapLocationLink} target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-lg bg-white border border-emerald-300 text-emerald-800 text-[11px] font-bold inline-flex items-center gap-1">Open Map <ExternalLink className="w-3 h-3" /></a></div>}
+                </div>
                 <label className="text-xs font-semibold text-gray-700 sm:col-span-2">UTR / Transaction ID<input value={transactionId} onChange={e=>setTransactionId(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
                 <label className="text-xs font-semibold text-gray-700 sm:col-span-2">Payment Screenshot<input type="file" accept="image/*" onChange={handleImageUpload} className="mt-1 w-full border rounded-lg p-2" /></label>
               </div>
