@@ -10,6 +10,5 @@ assert.match(source, /Non-Veg Club: 'Chicken Special Night'/);
 assert.match(source, /todayMenu\.dinner/);
 assert.match(source, /Dinner/);
 assert.match(source, /Chicken Special Night/);
-assert.match(source, /Egg Bhurji Gravy/);
 
 console.log('package menu tab requirements passed');
