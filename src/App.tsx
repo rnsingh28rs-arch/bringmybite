@@ -29,6 +29,9 @@ import { CalculatorWidget } from './components/common/CalculatorWidget';
 import { OrderRequestAlerts } from './components/panels/OrderRequestAlerts';
 import { CmsProvider } from './cms/CmsContext';
 import { resolveStaffRoute } from './utils/staffRoute.mjs';
+import { SeoManager } from './seo/SeoManager';
+import { getSeoRoute } from './seo/seoConfig';
+import { PublicSeoPage } from './components/seo/PublicSeoPage';
 
 const REDUNDANT_PANEL_TITLES = new Set(['D-ADMIN DESIGNER','CEO Cum Director Control Centre','Master Admin Dashboard (/admin)','Shree Foods Executive & Governance Console','Kitchen Operations & Inventory Manager','Manager Operations & Stock Control','Kitchen Operational Hub','Chef Kitchen Operations & Indents']);
 function removeRedundantPanelTitles(){const candidates=document.querySelectorAll<HTMLElement>('h1,h2,h3,span,p,div');candidates.forEach(element=>{if(element.children.length===0&&REDUNDANT_PANEL_TITLES.has(element.textContent?.trim()||''))element.style.display='none';});}
@@ -41,8 +44,10 @@ const MainContent:React.FC=()=>{
   useEffect(()=>{removeRedundantPanelTitles();const observer=new MutationObserver(()=>removeRedundantPanelTitles());observer.observe(document.body,{childList:true,subtree:true});return()=>observer.disconnect();},[locationKey]);
   const access=resolveStaffRoute(window.location.pathname);const role=access?.role??'customer';
   useEffect(()=>{setActiveRole(role);},[role,locationKey,setActiveRole]);
-  if(role==='customer') return <MobileAppFrame><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><TemporaryNoticeTicker/><TodayMenuTicker/><main className="flex-1"><ExpiryReminderBanner/><OrderStatusNotifier/><HeroBanner/><PackagesSection/><LowerFeaturesGrid/></main><Footer/><ChatBox/><WeeklyMenuModal/><RegistrationModal/><InstantOrderModal/><ReferralModal/><BonusOffersModal/><RenewalModal/><ReminderPreviewModal/><NativeAppDownloadModal/></div></MobileAppFrame>;
-  const staffWorkspace=<div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><StaffNavBar/><main className="flex-1">{role==='admin'&&<><OrderRequestAlerts/><AdminPanel/></>}{role==='manager'&&<ManagerStockPanel/>}{role==='chef'&&<ChefKitchenPanel/>}{role==='d_admin'&&<DAdminDesigner/>}</main>{(role==='manager'||role==='chef')&&<CalculatorWidget/>}<Footer/></div>;
+  const seoRoute=getSeoRoute(window.location.pathname);
+  if(role==='customer' && seoRoute && seoRoute.path!=='/') return <><SeoManager/><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><PublicSeoPage path={seoRoute.path}/><Footer/></div></>;
+  if(role==='customer') return <MobileAppFrame><><SeoManager/><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><TemporaryNoticeTicker/><TodayMenuTicker/><main className="flex-1"><ExpiryReminderBanner/><OrderStatusNotifier/><HeroBanner/><PackagesSection/><LowerFeaturesGrid/></main><Footer/><ChatBox/><WeeklyMenuModal/><RegistrationModal/><InstantOrderModal/><ReferralModal/><BonusOffersModal/><RenewalModal/><ReminderPreviewModal/><NativeAppDownloadModal/></div></></MobileAppFrame>;
+  const staffWorkspace=<div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><SeoManager/><TopBar/><Header/><StaffNavBar/><main className="flex-1">{role==='admin'&&<><OrderRequestAlerts/><AdminPanel/></>}{role==='manager'&&<ManagerStockPanel/>}{role==='chef'&&<ChefKitchenPanel/>}{role==='d_admin'&&<DAdminDesigner/>}</main>{(role==='manager'||role==='chef')&&<CalculatorWidget/>}<Footer/></div>;
   return staffWorkspace;
 };
 export default function App(){return <CmsProvider><AppProvider><MainContent/></AppProvider></CmsProvider>;}
