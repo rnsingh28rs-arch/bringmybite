@@ -1,24 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-
-const statuses = ['Pending Verification', 'Approved', 'Preparing', 'Dispatched', 'Delivered'];
-const nextStatus = {
-  'Pending Verification': 'Approved',
-  'Approved': 'Preparing',
-  'Preparing': 'Dispatched',
-  'Dispatched': 'Delivered',
-};
+import { getNextOrderStatus, getOrderActions, ORDER_LIFECYCLE } from '../src/utils/orderLifecycle.mjs';
 
 test('order lifecycle advances in order from verification to delivery', () => {
-  let status = 'Pending Verification';
-  for (const expected of statuses.slice(1)) {
-    assert.equal(nextStatus[status], expected);
+  let status = ORDER_LIFECYCLE[0];
+  for (const expected of ORDER_LIFECYCLE.slice(1)) {
+    assert.equal(getNextOrderStatus(status), expected);
     status = expected;
   }
   assert.equal(status, 'Delivered');
+  assert.equal(getNextOrderStatus('Delivered'), null);
 });
 
-test('only the lifecycle statuses are actionable after approval', () => {
-  assert.deepEqual(Object.keys(nextStatus), statuses.slice(0, -1));
-  assert.equal(nextStatus['Delivered'], undefined);
+test('role actions expose the complete operational handoff', () => {
+  assert.deepEqual(getOrderActions('Pending Verification', 'admin'), ['Approved', 'Declined']);
+  assert.deepEqual(getOrderActions('Approved', 'chef'), ['Preparing']);
+  assert.deepEqual(getOrderActions('Preparing', 'chef'), ['Dispatched']);
+  assert.deepEqual(getOrderActions('Dispatched', 'manager'), ['Delivered']);
+  assert.deepEqual(getOrderActions('Delivered', 'manager'), []);
 });
