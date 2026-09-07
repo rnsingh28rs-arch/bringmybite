@@ -20,6 +20,12 @@ const PLAN_META: Array<{
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
+const SPECIAL_NIGHT_BY_PLAN: Record<string, string> = {
+  'Veg Classic': 'Homely Special Night',
+  'Egg Delight': 'Protein Special Night',
+  'Non-Veg Club': 'Chicken Special Night'
+};
+
 export const CustomerConversionHome: React.FC = () => {
   const cms = useCms();
   const {
@@ -35,6 +41,8 @@ export const CustomerConversionHome: React.FC = () => {
 
   const todayName = DAY_NAMES[new Date().getDay()];
   const todayMenu = useMemo(() => cms.menus[menuPackage]?.find((item) => item.day === todayName), [cms.menus, menuPackage, todayName]);
+  const selectedPlanLabel = PLAN_META.find((p) => p.type === menuPackage)?.label || 'Veg Classic';
+  const specialNightLabel = SPECIAL_NIGHT_BY_PLAN[selectedPlanLabel];
 
   const openSubscription = (type: PackageType) => {
     setSelectedPackageForRegistration(type);
@@ -54,12 +62,12 @@ export const CustomerConversionHome: React.FC = () => {
   const monthlyPrice = (type: PackageType) => type === 'VEG CLASSIC' ? pricing.vegMonthly : type === 'EGG DELIGHT' ? pricing.eggMonthly : pricing.nonVegMonthly;
   const instantPrice = (type: ThaliType) => type === 'veg' ? pricing.vegThaliInstant : type === 'egg' ? pricing.eggThaliInstant : pricing.nonVegThaliInstant;
 
-  const mealRows = todayMenu ? [
-    ['Dal', todayMenu.lunch.dal],
-    ['Main', todayMenu.lunch.gravyOrNonVeg],
-    ['Dry Veg', todayMenu.lunch.dryVeg],
-    ['Rice', todayMenu.lunch.rice],
-    ['Extras', todayMenu.lunch.extras]
+  const mealRows = (meal: any) => meal ? [
+    ['Dal', meal.dal],
+    ['Main', meal.gravyOrNonVeg],
+    ['Dry Veg', meal.dryVeg],
+    ['Rice', meal.rice],
+    ['Extras', meal.extras]
   ] : [];
 
   return (
@@ -190,19 +198,44 @@ export const CustomerConversionHome: React.FC = () => {
             <div className="rounded-2xl border border-[#E5DAC6] bg-white p-5 sm:p-6 shadow-sm">
               <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-gray-500">{todayName} lunch</div>
-                  <h3 className="mt-1 text-xl font-extrabold text-[#0C3822]">{PLAN_META.find((p) => p.type === menuPackage)?.label}</h3>
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-gray-500">{todayName} menu</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <h3 className="text-xl font-extrabold text-[#0C3822]">{selectedPlanLabel}</h3>
+                    <span className="rounded-full bg-[#FDF7E7] px-2.5 py-1 text-[10px] font-extrabold text-[#6F4A10]">{specialNightLabel}</span>
+                  </div>
                 </div>
                 <Utensils className="h-7 w-7 text-[#C88A24]" />
               </div>
-              {mealRows.length ? (
-                <div className="mt-4 grid sm:grid-cols-2 gap-2">
-                  {mealRows.map(([label, value]) => <div key={label} className="rounded-xl bg-[#FAF7F2] p-3"><div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">{label}</div><div className="mt-1 text-sm font-semibold text-gray-800">{value}</div></div>)}
+
+              {todayMenu ? (
+                <div className="mt-4 grid xl:grid-cols-2 gap-4">
+                  {[
+                    { key: 'lunch', label: 'Lunch', meal: todayMenu.lunch },
+                    { key: 'dinner', label: 'Dinner', meal: todayMenu.dinner }
+                  ].map(({ key, label, meal }) => (
+                    <div key={key} className="rounded-2xl border border-[#E8E1D5] bg-[#FAF7F2] p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs font-black uppercase tracking-widest text-[#124E33]">{todayName} {label}</div>
+                        {label === 'Dinner' && <span className="rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-extrabold text-emerald-800">Special Night</span>}
+                      </div>
+                      {meal ? (
+                        <div className="mt-3 grid sm:grid-cols-2 gap-2">
+                          {mealRows(meal).map(([field, value]) => (
+                            <div key={field} className="rounded-xl bg-white p-3">
+                              <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">{field}</div>
+                              <div className="mt-1 text-sm font-semibold text-gray-800">{value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-3 rounded-xl bg-white p-4 text-sm text-gray-600">Kitchen closed for dinner.</div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="mt-5 rounded-xl bg-[#FAF7F2] p-5 text-sm text-gray-600">Today's menu is not available yet. Please open the full menu or contact support.</div>
               )}
-              {todayMenu?.dinner && <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-900"><Clock3 className="w-4 h-4" /> Dinner menu is also available in the full 7-day menu.</div>}
             </div>
           </div>
         </div>
