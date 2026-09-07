@@ -20,6 +20,8 @@ export interface StoredOrder {
   assignedTo?: string;
   preparationRequestedAt?: string;
   details?: string;
+  mapLatitude?: number;
+  mapLongitude?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +32,14 @@ function writeLocal(rows: StoredOrder[]) { localStorage.setItem(KEY, JSON.string
 function toUiStatus(status: string): StoredOrderStatus { if (status === 'Confirmed') return 'Approved'; if (status === 'Rejected') return 'Declined'; return status as StoredOrderStatus; }
 function toDbStatus(status: string): string { if (status === 'Approved') return 'Confirmed'; if (status === 'Declined') return 'Rejected'; return status; }
 function roleForStatus(status?: string): StoredOrderRole { if (status === 'Preparing') return 'chef'; if (status === 'Approved' || status === 'Dispatched' || status === 'Delivered') return 'manager'; return 'admin'; }
+
+function extractCoordinatesFromMapLink(details?: string): { latitude?: number; longitude?: number } {
+  const match = String(details || '').match(/(?:google\.com\/maps\?q=|maps\.google\.com\/\?q=)(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/i);
+  if (!match) return {};
+  const latitude = Number(match[1]);
+  const longitude = Number(match[2]);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : {};
+}
 
 async function insertPublicOrder(order: StoredOrder) {
   const response = await fetch(`${getSupabaseUrl()}/rest/v1/bmb_orders`, {
@@ -70,9 +80,12 @@ export async function updateStoredOrder(id: string, patch: Partial<StoredOrder>)
   writeLocal(rows);
 }
 
-function toDb(order: StoredOrder) { return { id: order.id, kind: order.kind, customer_name: order.customerName, phone: order.phone, whatsapp: order.whatsapp || '', plan_or_meal: order.planOrMeal, amount: order.amount, utr_number: order.utrNumber, payment_slip: order.paymentSlip || null, payment_status: order.paymentStatus, status: toDbStatus(order.status), assigned_role: order.assignedRole || 'admin', assigned_to: order.assignedTo || order.assignedRole || 'admin', preparation_requested_at: order.preparationRequestedAt || null, details: order.details || '', created_at: order.createdAt, updated_at: order.updatedAt }; }
-function toDbPatch(patch: Partial<StoredOrder>) { const out: Record<string, unknown> = {}; if (patch.paymentStatus !== undefined) out.payment_status = patch.paymentStatus; if (patch.status !== undefined) out.status = toDbStatus(patch.status); if (patch.assignedRole !== undefined) out.assigned_role = patch.assignedRole; if (patch.assignedTo !== undefined) out.assigned_to = patch.assignedTo; if (patch.preparationRequestedAt !== undefined) out.preparation_requested_at = patch.preparationRequestedAt; if (patch.details !== undefined) out.details = patch.details; if (patch.paymentSlip !== undefined) out.payment_slip = patch.paymentSlip; out.updated_at = new Date().toISOString(); return out; }
-function normalizeRow(row: any): StoredOrder { return { id: row.id, kind: row.kind, customerName: row.customer_name ?? row.customerName ?? '', phone: row.phone ?? '', whatsapp: row.whatsapp ?? '', planOrMeal: row.plan_or_meal ?? row.planOrMeal ?? '', amount: Number(row.amount ?? 0), utrNumber: row.utr_number ?? row.utrNumber ?? '', paymentSlip: row.payment_slip ?? row.paymentSlip, paymentStatus: row.payment_status ?? row.paymentStatus ?? 'Pending Verification', status: toUiStatus(row.status ?? 'Pending Verification'), assignedRole: (row.assigned_role || undefined) as StoredOrderRole | undefined, assignedTo: row.assigned_to || undefined, preparationRequestedAt: row.preparation_requested_at || undefined, details: row.details ?? '', createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(), updatedAt: row.updated_at ?? row.updatedAt ?? new Date().toISOString() }; }
+function toDb(order: StoredOrder) {
+  const coords = order.mapLatitude !== undefined && order.mapLongitude !== undefined ? { latitude: order.mapLatitude, longitude: order.mapLongitude } : extractCoordinatesFromMapLink(order.details);
+  return { id: order.id, kind: order.kind, customer_name: order.customerName, phone: order.phone, whatsapp: order.whatsapp || '', plan_or_meal: order.planOrMeal, amount: order.amount, utr_number: order.utrNumber, payment_slip: order.paymentSlip || null, payment_status: order.paymentStatus, status: toDbStatus(order.status), assigned_role: order.assignedRole || 'admin', assigned_to: order.assignedTo || order.assignedRole || 'admin', preparation_requested_at: order.preparationRequestedAt || null, details: order.details || '', map_latitude: coords.latitude ?? null, map_longitude: coords.longitude ?? null, created_at: order.createdAt, updated_at: order.updatedAt };
+}
+function toDbPatch(patch: Partial<StoredOrder>) { const out: Record<string, unknown> = {}; if (patch.paymentStatus !== undefined) out.payment_status = patch.paymentStatus; if (patch.status !== undefined) out.status = toDbStatus(patch.status); if (patch.assignedRole !== undefined) out.assigned_role = patch.assignedRole; if (patch.assignedTo !== undefined) out.assigned_to = patch.assignedTo; if (patch.preparationRequestedAt !== undefined) out.preparation_requested_at = patch.preparationRequestedAt; if (patch.details !== undefined) { out.details = patch.details; const coords = extractCoordinatesFromMapLink(patch.details); if (coords.latitude !== undefined) out.map_latitude = coords.latitude; if (coords.longitude !== undefined) out.map_longitude = coords.longitude; } if (patch.paymentSlip !== undefined) out.payment_slip = patch.paymentSlip; out.updated_at = new Date().toISOString(); return out; }
+function normalizeRow(row: any): StoredOrder { return { id: row.id, kind: row.kind, customerName: row.customer_name ?? row.customerName ?? '', phone: row.phone ?? '', whatsapp: row.whatsapp ?? '', planOrMeal: row.plan_or_meal ?? row.planOrMeal ?? '', amount: Number(row.amount ?? 0), utrNumber: row.utr_number ?? row.utrNumber ?? '', paymentSlip: row.payment_slip ?? row.paymentSlip, paymentStatus: row.payment_status ?? row.paymentStatus ?? 'Pending Verification', status: toUiStatus(row.status ?? 'Pending Verification'), assignedRole: (row.assigned_role || undefined) as StoredOrderRole | undefined, assignedTo: row.assigned_to || undefined, preparationRequestedAt: row.preparation_requested_at || undefined, details: row.details ?? '', mapLatitude: row.map_latitude == null ? undefined : Number(row.map_latitude), mapLongitude: row.map_longitude == null ? undefined : Number(row.map_longitude), createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(), updatedAt: row.updated_at ?? row.updatedAt ?? new Date().toISOString() }; }
 
 const TRACKING_KEY = 'bmb_last_order_tracking_v1';
 export function saveLastOrderTracking(order: Pick<StoredOrder, 'id' | 'phone'>) { localStorage.setItem(TRACKING_KEY, JSON.stringify({ id: order.id, phone: order.phone })); window.dispatchEvent(new Event('bmb-order-tracking-change')); }
