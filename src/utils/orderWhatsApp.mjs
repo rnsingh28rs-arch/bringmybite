@@ -34,7 +34,8 @@ export function buildOrderStatusMessage(order, status, declineReason = '') {
     );
   }
   if (status === 'Declined') {
-    lines.push('', `Reason for decline: ${declineReason || 'The order could not be approved after verification.'}`);
+    const savedReason = String(order.details || '').match(/Decline reason:\s*(.+?)(?:\n|$)/i)?.[1]?.trim();
+    lines.push('', `Reason for decline: ${declineReason || savedReason || 'The order could not be approved after verification.'}`);
   }
 
   lines.push('', 'Bring My Bite | Shree Foods', 'WhatsApp/Help: +91 9315075165');
