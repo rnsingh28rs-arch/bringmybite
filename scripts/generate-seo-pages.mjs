@@ -39,4 +39,14 @@ for (const [slug, title, description] of pages) {
   fs.writeFileSync(path.join(outputDir, 'index.html'), html);
 }
 
-console.log(`Generated ${pages.length} SEO route documents.`);
+const staffRoutes = ['admin', 'manager', 'chef', 'd-admin', 'staff'];
+for (const slug of staffRoutes) {
+  let html = template;
+  html = replaceTag(html, /<meta name="robots" content="[^"]*"\s*\/>/i, '<meta name="robots" content="noindex,nofollow,noarchive" />');
+  html = replaceTag(html, /<link rel="canonical" href="[^"]*"\s*\/>/i, `<link rel="canonical" href="https://bringmybite.com/${slug}" />`);
+  const outputDir = path.join(dist, slug);
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(path.join(outputDir, 'index.html'), html);
+}
+
+console.log(`Generated ${pages.length} SEO route documents and ${staffRoutes.length} staff noindex documents.`);
