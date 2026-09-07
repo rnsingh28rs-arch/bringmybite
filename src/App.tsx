@@ -20,7 +20,6 @@ import { ExpiryReminderBanner } from './components/customer/ExpiryReminderBanner
 import { OrderStatusNotifier } from './components/customer/OrderStatusNotifier';
 import { NativeAppDownloadModal } from './components/mobile/NativeAppDownloadModal';
 import { StaffNavBar } from './components/panels/StaffNavBar';
-import { StaffLoginGate } from './components/panels/StaffLoginGate';
 import { AdminPanel } from './components/panels/AdminPanel';
 import { ManagerStockPanel } from './components/panels/ManagerStockPanel';
 import { ChefKitchenPanel } from './components/panels/ChefKitchenPanel';
@@ -43,6 +42,6 @@ const MainContent:React.FC=()=>{
   useEffect(()=>{setActiveRole(role);},[role,locationKey,setActiveRole]);
   if(role==='customer') return <MobileAppFrame><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><TemporaryNoticeTicker/><TodayMenuTicker/><main className="flex-1"><ExpiryReminderBanner/><OrderStatusNotifier/><HeroBanner/><PackagesSection/><LowerFeaturesGrid/></main><Footer/><ChatBox/><WeeklyMenuModal/><RegistrationModal/><InstantOrderModal/><ReferralModal/><BonusOffersModal/><RenewalModal/><ReminderPreviewModal/><NativeAppDownloadModal/></div></MobileAppFrame>;
   const staffWorkspace=<div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><StaffNavBar/><main className="flex-1">{role==='admin'&&<AdminPanel/>}{role==='manager'&&<ManagerStockPanel/>}{role==='chef'&&<ChefKitchenPanel/>}{role==='d_admin'&&<DAdminDesigner/>}</main>{(role==='manager'||role==='chef')&&<CalculatorWidget/>}<Footer/></div>;
-  return <StaffLoginGate role={role}>{staffWorkspace}</StaffLoginGate>;
+  return staffWorkspace;
 };
 export default function App(){return <CmsProvider><AppProvider><MainContent/></AppProvider></CmsProvider>;}
