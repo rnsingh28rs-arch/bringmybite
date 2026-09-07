@@ -12,7 +12,6 @@ import { LowerFeaturesGrid } from './components/customer/LowerFeaturesGrid';
 import { WeeklyMenuModal } from './components/customer/WeeklyMenuModal';
 import { RegistrationModal } from './components/customer/RegistrationModal';
 import { InstantOrderModal } from './components/customer/InstantOrderModal';
-import { ReferralModal } from './components/customer/ReferralModal';
 import { BonusOffersModal } from './components/customer/BonusOffersModal';
 import { RenewalModal } from './components/customer/RenewalModal';
 import { ReminderPreviewModal } from './components/customer/ReminderPreviewModal';
@@ -46,7 +45,7 @@ const MainContent:React.FC=()=>{
   useEffect(()=>{setActiveRole(role);},[role,locationKey,setActiveRole]);
   const seoRoute=getSeoRoute(window.location.pathname);
   if(role==='customer' && seoRoute && seoRoute.path!=='/') return <><SeoManager/><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><PublicSeoPage path={seoRoute.path}/><Footer/></div></>;
-  if(role==='customer') return <MobileAppFrame><><SeoManager/><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><TemporaryNoticeTicker/><TodayMenuTicker/><main className="flex-1"><ExpiryReminderBanner/><OrderStatusNotifier/><HeroBanner/><PackagesSection/><LowerFeaturesGrid/></main><Footer/><ChatBox/><WeeklyMenuModal/><RegistrationModal/><InstantOrderModal/><ReferralModal/><BonusOffersModal/><RenewalModal/><ReminderPreviewModal/><NativeAppDownloadModal/></div></></MobileAppFrame>;
+  if(role==='customer') return <MobileAppFrame><><SeoManager/><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><TemporaryNoticeTicker/><TodayMenuTicker/><main className="flex-1"><ExpiryReminderBanner/><OrderStatusNotifier/><HeroBanner/><PackagesSection/><LowerFeaturesGrid/></main><Footer/><ChatBox/><WeeklyMenuModal/><RegistrationModal/><InstantOrderModal/><BonusOffersModal/><RenewalModal/><ReminderPreviewModal/><NativeAppDownloadModal/></div></></MobileAppFrame>;
   const staffWorkspace=<div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><SeoManager/><TopBar/><Header/><StaffNavBar/><main className="flex-1">{role==='admin'&&<><OrderRequestAlerts/><AdminPanel/></>}{role==='manager'&&<ManagerStockPanel/>}{role==='chef'&&<ChefKitchenPanel/>}{role==='d_admin'&&<DAdminDesigner/>}</main>{(role==='manager'||role==='chef')&&<CalculatorWidget/>}<Footer/></div>;
   return staffWorkspace;
 };
