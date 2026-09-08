@@ -26,16 +26,15 @@ jobs:
           if '<SubscriptionActivityPanel subscriptions={subscriptions} />' not in s:
               if marker not in s: raise SystemExit('Subscription tab marker not found')
               s = s.replace(marker, replacement, 1)
-              # Close the wrapper immediately after the existing subscription directory block.
               target = "</div></div>}\n    {activeAdminTab === 'oversight'"
               if target not in s: raise SystemExit('Subscription tab closing marker not found')
               s = s.replace(target, "</div></div></div>}\n    {activeAdminTab === 'oversight'", 1)
           p.write_text(s)
           PY
-      - name: Typecheck
+      - name: Build verification
         run: |
           npm ci --ignore-scripts
-          npm run lint
+          npm run build
       - name: Commit and remove one-time workflow
         run: |
           git config user.name 'github-actions[bot]'
