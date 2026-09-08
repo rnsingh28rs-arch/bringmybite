@@ -2,13 +2,17 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const parseDate = (value) => {
   if (!value) return null;
+  if (value instanceof Date) {
+    const date = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
   const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
 export const getSubscriptionDay = (startDate, referenceDate = new Date()) => {
   const start = parseDate(startDate);
-  const reference = parseDate(referenceDate instanceof Date ? referenceDate.toISOString() : referenceDate);
+  const reference = parseDate(referenceDate);
   if (!start || !reference) return 1;
   const elapsed = Math.floor((reference.getTime() - start.getTime()) / MS_PER_DAY);
   return Math.max(1, elapsed + 1);
@@ -17,7 +21,7 @@ export const getSubscriptionDay = (startDate, referenceDate = new Date()) => {
 const isActive = (subscription) => subscription?.active === true && subscription?.verificationStatus === 'Approved';
 
 export const getSubscriptionActivityMetrics = (subscriptions = [], referenceDate = new Date()) => {
-  const reference = parseDate(referenceDate instanceof Date ? referenceDate.toISOString() : referenceDate);
+  const reference = parseDate(referenceDate);
   if (!reference) return { active: 0, newToday: 0, startedThisWeek: 0, expiringSoon: 0 };
 
   const activeSubscriptions = subscriptions.filter(isActive);
