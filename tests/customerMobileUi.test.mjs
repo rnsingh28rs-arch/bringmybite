@@ -15,9 +15,10 @@ test('customer mobile home is visually rich and uses the existing food image cat
 });
 
 test('customer mobile keeps all customer-facing navigation areas', () => {
-  for (const label of ['Home', 'Menu', 'Instant', 'Profile']) {
-    assert.match(source, new RegExp(`>${label}<`));
-  }
+  assert.match(source, /\['home', 'Home', User\]/);
+  assert.match(source, /\['menu', 'Menu', Utensils\]/);
+  assert.match(source, /\['instant', 'Instant', Zap\]/);
+  assert.match(source, /\['profile', 'Profile', QrCode\]/);
 });
 
 test('customer mobile keeps live CMS pricing for all three instant thalis', () => {
