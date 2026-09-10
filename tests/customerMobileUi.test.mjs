@@ -10,8 +10,8 @@ test('customer mobile home is visually rich and uses the existing food image cat
   assert.match(source, /FOOD_IMAGES\.vegThali/);
   assert.match(source, /FOOD_IMAGES\.eggThali/);
   assert.match(source, /FOOD_IMAGES\.nonVegThali/);
-  assert.match(source, /Today's meal/);
   assert.match(source, /Order Today's Thali/);
+  assert.match(source, /Monthly Plans/);
 });
 
 test('customer mobile keeps all customer-facing navigation areas', () => {
