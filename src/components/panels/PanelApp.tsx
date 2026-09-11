@@ -31,6 +31,13 @@ function PanelPicker({ logo }: { logo?: string }) {
 export const PanelApp: React.FC = () => {
   const cms = useCms(); const { setActiveRole } = useApp();
   const role = resolvePanelRole(typeof window === 'undefined' ? '/' : window.location.pathname) as PanelRole | null;
+  useEffect(() => {
+    const manifest = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
+    if (manifest) manifest.href = '/panel-manifest.json';
+    else { const link = document.createElement('link'); link.rel = 'manifest'; link.href = '/panel-manifest.json'; document.head.appendChild(link); }
+    document.title = 'Bring My Bite Panel';
+    return () => { const current = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null; if (current) current.href = '/manifest.json'; document.title = 'Bring My Bite | Homely Tiffin Service by Shree Foods'; };
+  }, []);
   useEffect(() => { if (role) setActiveRole(role); }, [role, setActiveRole]);
   if (!role) return <PanelPicker logo={cms.siteSettings.logo_url} />;
   const meta = roleMeta[role];
