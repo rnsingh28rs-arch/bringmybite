@@ -27,6 +27,13 @@ test('mobile customer view is not trapped inside a nested scrolling touch frame'
   assert.match(frame, /<SecureCustomerMobileView\s*\/>/);
 });
 
+test('customer mobile renders the existing instant order and subscription modals', () => {
+  assert.match(frame, /import \{ InstantOrderModal \} from '\.\.\/customer\/InstantOrderModal';/);
+  assert.match(frame, /import \{ RegistrationModal \} from '\.\.\/customer\/RegistrationModal';/);
+  assert.match(frame, /<InstantOrderModal\s*\/>/);
+  assert.match(frame, /<RegistrationModal\s*\/>/);
+});
+
 test('customer mobile keeps live CMS pricing for all three instant thalis', () => {
   assert.match(source, /pricing\.vegThaliInstant/);
   assert.match(source, /pricing\.eggThaliInstant/);
