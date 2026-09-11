@@ -26,15 +26,6 @@ const DB_ROLES: Record<string, string> = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: corsHeaders });
 
-const hex = (bytes: Uint8Array) =>
-  Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
-
-const sha256 = async (value: string) =>
-  hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))));
-
-const deriveAuthPassword = async (role: string, pin: string) =>
-  `BMB-${role}-${await sha256(`bringmybite-staff:${role}:${pin}`)}-auth!`;
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
@@ -44,7 +35,7 @@ Deno.serve(async (req) => {
     return json({ error: 'Authentication service configuration error.' }, 500);
   }
 
-  let body: { role?: string; pin?: string };
+  let body: { role?: string; username?: string; password?: string };
   try {
     body = await req.json();
   } catch {
@@ -52,11 +43,12 @@ Deno.serve(async (req) => {
   }
 
   const role = String(body.role || '').trim().toLowerCase();
-  const pin = String(body.pin || '').trim();
+  const username = String(body.username || '').trim().toLowerCase();
+  const password = String(body.password || '');
   const dbRole = DB_ROLES[role];
 
-  if (!dbRole || !/^\d{6}$/.test(pin)) {
-    return json({ error: 'Enter the configured 6-digit staff PIN.' }, 401);
+  if (!dbRole || !/^[a-z0-9._-]{2,64}$/.test(username) || password.length < 8 || password.length > 128) {
+    return json({ error: 'Enter your valid staff username and password.' }, 401);
   }
 
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SECRET, {
@@ -66,9 +58,12 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 
+  // The application database remains the authority for staff identity, active status,
+  // and role. Supabase Auth is used only for the password/session itself.
   const { data: account, error: lookupError } = await adminClient
     .from('bmb_admin_users')
-    .select('user_id,email,role_id,active,pin_hash')
+    .select('user_id,username,role_id,active')
+    .eq('username', username)
     .eq('role_id', dbRole)
     .eq('active', true)
     .limit(1)
@@ -79,53 +74,35 @@ Deno.serve(async (req) => {
     return json({ error: 'Authentication database lookup failed.' }, 500);
   }
 
-  if (!account?.user_id || !account.email || account.role_id !== dbRole || !account.active) {
-    return json({ error: 'Staff account is not configured.' }, 403);
+  if (!account?.user_id || account.username !== username || account.role_id !== dbRole || !account.active) {
+    return json({ error: 'Staff account is not active for this panel.' }, 403);
   }
 
-  if (!account.pin_hash) {
-    console.error('staff-login stage=pin-not-configured', JSON.stringify({ role }));
-    return json({ error: 'Staff PIN is not configured for this panel.' }, 503);
-  }
-
-  const suppliedHash = await sha256(pin);
-  if (suppliedHash !== account.pin_hash) {
-    return json({ error: 'Invalid credentials.' }, 401);
-  }
-
-  const authPassword = await deriveAuthPassword(role, pin);
-  const { error: updateError } = await adminClient.auth.admin.updateUserById(
-    account.user_id,
-    { password: authPassword, email_confirm: true },
-  );
-
-  if (updateError) {
-    console.error(
-      'staff-login stage=update-password',
-      JSON.stringify({ status: updateError.status, code: updateError.code }),
-    );
-    return json({ error: 'Authentication password synchronization failed.' }, 500);
-  }
-
+  // Existing Supabase Auth accounts use the stable company email convention based on
+  // the database username (for example admin -> admin@bringmybite.com).
+  const authEmail = `${username}@bringmybite.com`;
   const { data: sessionData, error: signInError } = await publicClient.auth.signInWithPassword({
-    email: account.email,
-    password: authPassword,
+    email: authEmail,
+    password,
   });
 
   if (signInError || !sessionData.session) {
     console.error(
-      'staff-login stage=token',
+      'staff-login stage=credentials',
       JSON.stringify({ status: signInError?.status, code: signInError?.code }),
     );
-    return json({ error: 'Authentication token creation failed.' }, 500);
+    return json({ error: 'Invalid username or password.' }, 401);
   }
 
+  const session = sessionData.session;
   console.log('staff-login stage=success', JSON.stringify({ role, user_id: account.user_id }));
   return json({
-    access_token: sessionData.session.access_token,
-    refresh_token: sessionData.session.refresh_token,
-    expires_in: sessionData.session.expires_in,
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+    expires_in: session.expires_in,
+    expires_at: session.expires_at,
     user_id: account.user_id,
+    username: account.username,
     role,
   });
 });
