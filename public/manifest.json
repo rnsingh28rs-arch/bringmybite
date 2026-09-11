@@ -6,19 +6,19 @@
   "categories": ["food", "lifestyle", "shopping"],
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/bmb-logo-192-v2.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/bmb-logo-512-v2.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-maskable-512.png",
+      "src": "/icons/bmb-logo-maskable-512-v2.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
@@ -28,7 +28,7 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0C3822",
+  "background_color": "#FFFFFF",
   "theme_color": "#0C3822",
   "lang": "en-US",
   "dir": "ltr",
