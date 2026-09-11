@@ -14,8 +14,11 @@ const outputs = [
 const trimBackground = { r: 255, g: 255, b: 255, alpha: 1 };
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
 
-await fs.access(source);
-const base = sharp(source).trim({ background: trimBackground });
+const svg = await fs.readFile(source, 'utf8');
+const match = svg.match(/data:image\/jpeg;base64,([^\"]+)/);
+if (!match) throw new Error(`Could not find embedded JPEG logo in ${source}`);
+const sourceBuffer = Buffer.from(match[1], 'base64');
+const base = sharp(sourceBuffer).trim({ background: trimBackground });
 
 for (const [output, size] of outputs) {
   await fs.mkdir(output.substring(0, output.lastIndexOf('/')), { recursive: true });
