@@ -1,6 +1,8 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { SecureCustomerMobileView } from './SecureCustomerMobileView';
+import { InstantOrderModal } from '../customer/InstantOrderModal';
+import { RegistrationModal } from '../customer/RegistrationModal';
 
 interface MobileAppFrameProps { children: React.ReactNode; }
 
@@ -30,6 +32,8 @@ export const MobileAppFrame: React.FC<MobileAppFrameProps> = ({ children }) => {
         }}
       >
         <SecureCustomerMobileView />
+        <InstantOrderModal />
+        <RegistrationModal />
       </div>
     );
   }
