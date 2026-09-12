@@ -1,88 +1,40 @@
-import React, { useMemo } from 'react';
-import type { Subscription } from '../../types';
-import { CalendarDays, CheckCircle2, Clock3, UsersRound } from 'lucide-react';
-import { getSubscriptionActivityMetrics, getSubscriptionDay } from '../../utils/subscriptionActivity.mjs';
+import React,{useEffect,useMemo,useState} from 'react';
+import type {Subscription} from '../../types';
+import {supabasePatch,supabaseRpc,supabaseSelect} from '../../cms/supabaseRest';
+import {useApp} from '../../context/AppContext';
+import {whatsappLink} from '../../utils/phone';
+import {CalendarDays,CheckCircle2,FileText,MapPin,MessageCircle,Plus,Search,Send,UserPlus,X} from 'lucide-react';
 
-type Props = { subscriptions: Subscription[] };
+type Raw=Subscription&{receipt_number?:string|null;approved_at?:string|null;original_expiry_date?:string|null;total_extension_days?:number;receipt_sent_at?:string|null;receipt_sent_channel?:string|null};
+type Ext={id:string;subscription_id:string;days_added:number;reason:string;notes?:string|null;old_expiry_date:string;new_expiry_date:string;created_at:string};
+const date=(v?:string|null)=>v?new Date(`${v.slice(0,10)}T00:00:00`).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—';
+const dateTime=(v?:string|null)=>v?new Date(v).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+const left=(v?:string|null)=>v?Math.max(0,Math.ceil((new Date(`${v.slice(0,10)}T23:59:59`).getTime()-Date.now())/86400000)):0;
+const used=(v?:string|null)=>v?Math.max(0,Math.floor((Date.now()-new Date(`${v.slice(0,10)}T00:00:00`).getTime())/86400000)+1):0;
+const loc=(s:Raw)=>[s.houseFlatNo,s.buildingSociety,s.streetArea,s.landmark,s.city,s.pinCode].filter(Boolean).join(', ')||s.lunchDeliveryPoint||'—';
+const msg=(s:Raw)=>`Bring My Bite Subscription Receipt\nReceipt: ${s.receipt_number||s.id}\nSubscriber: ${s.customerName}\nPlan: ${s.packageType}\nAmount Paid: ₹${Number(s.amountPaid||0).toLocaleString('en-IN')}\nPayment Date: ${date(s.paymentDate)}\nStart: ${date(s.startDate)}\nCurrent End: ${date(s.expiryDate)}\nDays Remaining: ${left(s.expiryDate)}\nLocation: ${loc(s)}\nThank you for choosing Bring My Bite.`;
 
-const formatDate = (value: string) => {
-  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+export const SubscriptionActivityPanel:React.FC<{subscriptions:Subscription[]}>=({subscriptions})=>{
+ const {addSubscription}=useApp(); const [rows,setRows]=useState<Raw[]>([]),[selected,setSelected]=useState<Raw|null>(null),[history,setHistory]=useState<Ext[]>([]),[q,setQ]=useState(''),[filter,setFilter]=useState('all'),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[modal,setModal]=useState<'receipt'|'extend'|'add'|null>(null);
+ const [days,setDays]=useState('7'),[reason,setReason]=useState('Subscriber unavailable / out of station'),[notes,setNotes]=useState('');
+ const today=new Date().toISOString().slice(0,10); const [form,setForm]=useState<any>({customerName:'',mobileNumber:'',whatsappNumber:'',category:'Other',packageType:'VEG CLASSIC',packageCode:'VC',monthlyPrice:0,mealPreference:'Lunch Only',startDate:today,duration:'1 Month',amountPaid:0,paymentMethod:'UPI',paymentDate:today,transactionId:'',houseFlatNo:'',buildingSociety:'',streetArea:'',landmark:'',city:'',pinCode:'',lunchDeliveryPoint:''});
+ const load=async()=>{try{const r=await supabaseSelect<any>('bmb_subscriptions','select=*&order=created_at.desc');setRows(r as Raw[]);}catch(e:any){setNotice(e.message||'Could not load subscribers.')}};
+ const loadHistory=async(id:string)=>{try{setHistory(await supabaseSelect<Ext>('bmb_subscription_extensions',`select=*&subscription_id=eq.${encodeURIComponent(id)}&order=created_at.desc`));}catch{setHistory([])}};
+ useEffect(()=>{void load()},[]); useEffect(()=>{if(selected)void loadHistory(selected.id)},[selected]);
+ const source=rows.length?rows:subscriptions as Raw[]; const visible=useMemo(()=>source.filter(s=>{const t=`${s.customerName} ${s.mobileNumber} ${s.id} ${s.receipt_number||''}`.toLowerCase();if(q&&!t.includes(q.toLowerCase()))return false;if(filter==='pending'&&s.verificationStatus!=='Pending')return false;if(filter==='active'&&!(s.verificationStatus==='Approved'&&left(s.expiryDate)>0))return false;if(filter==='expired'&&left(s.expiryDate)>0)return false;return true}),[source,q,filter]);
+ const approve=async(s:Raw)=>{setBusy(true);setNotice('');try{await supabasePatch('bmb_subscriptions',`id=eq.${encodeURIComponent(s.id)}`,{verification_status:'Approved',active:true,updated_at:new Date().toISOString()});await load();const fresh=(await supabaseSelect<any>('bmb_subscriptions',`select=*&id=eq.${encodeURIComponent(s.id)}`))[0] as Raw;if(fresh){setSelected(fresh);setModal('receipt');setNotice(`Approved. Receipt ${fresh.receipt_number||''} generated automatically.`);if(fresh.whatsappNumber||fresh.mobileNumber){window.open(whatsappLink(fresh.whatsappNumber||fresh.mobileNumber,msg(fresh)),'_blank','noopener,noreferrer');}}}catch(e:any){setNotice(e.message||'Approval failed.')}finally{setBusy(false)}};
+ const manual=async(e:React.FormEvent)=>{e.preventDefault();setBusy(true);try{const saved=await addSubscription({...form,whatsappNumber:form.whatsappNumber||form.mobileNumber,active:true,verificationStatus:'Approved',monthlyPrice:Number(form.monthlyPrice),amountPaid:Number(form.amountPaid)});setModal(null);await load();const fresh=(await supabaseSelect<any>('bmb_subscriptions',`select=*&id=eq.${encodeURIComponent(saved.id)}`))[0] as Raw;if(fresh){setSelected(fresh);setModal('receipt');setNotice(`Subscriber added. Receipt ${fresh.receipt_number||''} generated.`)}}catch(e:any){setNotice(e.message||'Could not add subscriber.')}finally{setBusy(false)}};
+ const extend=async(e:React.FormEvent)=>{e.preventDefault();if(!selected)return;setBusy(true);try{const r=await supabaseRpc<Raw>('bmb_extend_subscription',{p_subscription_id:selected.id,p_days:Number(days),p_reason:reason,p_extended_by:'Admin',p_notes:notes});const fresh=r[0];await load();setSelected(fresh);await loadHistory(fresh.id);setModal(null);setNotice(`Subscription extended by ${days} day(s).`)}catch(e:any){setNotice(e.message||'Extension failed.')}finally{setBusy(false)}};
+ const send=(s:Raw)=>{const p=s.whatsappNumber||s.mobileNumber;if(!p){setNotice('No WhatsApp/mobile number available.');return;}window.location.href=whatsappLink(p,msg(s));void supabasePatch('bmb_subscriptions',`id=eq.${encodeURIComponent(s.id)}`,{receipt_sent_at:new Date().toISOString(),receipt_sent_channel:'whatsapp'}).catch(()=>{})};
+ const print=(s:Raw)=>{const w=window.open('','_blank','width=800,height=900');if(!w){setNotice('Allow popups to print the receipt.');return;}w.document.write(`<html><head><title>${s.receipt_number||s.id}</title><style>body{font-family:Arial;padding:35px;max-width:760px;margin:auto}h1{color:#5C1111}.head{display:flex;justify-content:space-between;border-bottom:2px solid #C88A24;padding-bottom:15px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}.box{border:1px solid #ddd;border-radius:8px;padding:10px}.label{font-size:10px;color:#666;text-transform:uppercase}.value{font-weight:700;margin-top:4px}.full{grid-column:1/-1}.status{margin-top:20px;padding:12px;background:#eef8f1;border-radius:8px}@media print{button{display:none}}</style></head><body><div class=head><div><h1>Bring My Bite</h1><b>Subscription Receipt</b></div><div><b>${s.receipt_number||s.id}</b><br>${dateTime(s.approved_at||s.createdAt)}</div></div><div class=grid><div class=box><div class=label>Subscriber</div><div class=value>${s.customerName}</div>${s.mobileNumber}</div><div class=box><div class=label>Plan</div><div class=value>${s.packageType}</div>${s.mealPreference} • ${s.duration}</div><div class=box><div class=label>Payment</div><div class=value>₹${Number(s.amountPaid||0).toLocaleString('en-IN')}</div>${s.paymentMethod} • ${s.transactionId||'—'}</div><div class=box><div class=label>Payment Date</div><div class=value>${date(s.paymentDate)}</div>Approval: ${dateTime(s.approved_at)}</div><div class=box><div class=label>Start</div><div class=value>${date(s.startDate)}</div>Original End: ${date(s.original_expiry_date||s.expiryDate)}</div><div class=box><div class=label>Current End</div><div class=value>${date(s.expiryDate)}</div>Extension: +${Number(s.total_extension_days||0)} days</div><div class=box><div class=label>Days Used</div><div class=value>${used(s.startDate)}</div></div><div class=box><div class=label>Days Remaining</div><div class=value>${left(s.expiryDate)}</div></div><div class="box full"><div class=label>Location</div><div class=value>${loc(s)}</div></div></div><div class=status><b>${s.verificationStatus==='Approved'&&left(s.expiryDate)>0?'ACTIVE':s.verificationStatus}</b> • ${left(s.expiryDate)} day(s) remaining • Current expiry ${date(s.expiryDate)}</div><script>onload=()=>print()</script></body></html>`);w.document.close()};
+ const openAdd=()=>{setForm({...form,customerName:'',mobileNumber:'',whatsappNumber:'',amountPaid:0,transactionId:'',startDate:today,paymentDate:today});setModal('add')};
+ return <section className="bg-white rounded-2xl border-2 border-emerald-100 shadow-sm overflow-hidden"><div className="p-5 border-b bg-gradient-to-r from-emerald-50 to-white"><div className="flex flex-wrap justify-between gap-3"><div><div className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-600"/><h3 className="font-black text-base uppercase">Subscriber & Receipt Manager</h3></div><p className="text-[11px] text-gray-500 mt-1">Payment, start date, expiry, remaining days, receipts and extensions in one place.</p></div><button onClick={openAdd} className="px-3 py-2 rounded-xl bg-[#124E33] text-white text-xs font-black"><UserPlus className="w-4 h-4 inline mr-1"/>Add Subscriber</button></div><div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4"><Metric l="Total" v={source.length}/><Metric l="Pending" v={source.filter(s=>s.verificationStatus==='Pending').length}/><Metric l="Active" v={source.filter(s=>s.verificationStatus==='Approved'&&left(s.expiryDate)>0).length}/><Metric l="Expiring ≤3d" v={source.filter(s=>s.verificationStatus==='Approved'&&left(s.expiryDate)<=3).length}/></div><div className="mt-4 flex gap-2 flex-wrap"><div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search subscriber, mobile, receipt or ID" className="w-full border rounded-xl pl-9 p-2 text-xs"/></div>{['all','pending','active','expired'].map(f=><button key={f} onClick={()=>setFilter(f)} className={`px-3 py-2 rounded-xl text-xs font-bold ${filter===f?'bg-[#5C1111] text-white':'bg-gray-100'}`}>{f}</button>)}</div></div>{notice&&<div className="mx-5 mt-4 rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-xs font-semibold text-blue-900">{notice}</div>}<div className="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">{visible.map(s=><article key={s.id} className="rounded-2xl border p-4 bg-gradient-to-br from-white to-emerald-50/40"><div className="flex justify-between gap-2"><div><b>{s.customerName}</b><div className="text-[11px] text-gray-500">{s.packageType} • {s.mobileNumber}</div></div><span className={`text-[9px] font-black px-2 py-1 rounded-full ${s.verificationStatus==='Approved'?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}`}>{s.verificationStatus}</span></div><div className="mt-3 text-2xl font-black text-[#124E33]">{s.verificationStatus==='Approved'?`${left(s.expiryDate)} days left`:'Awaiting approval'}</div><div className="mt-2 text-[11px] text-gray-600 space-y-1"><div><CalendarDays className="w-3.5 h-3.5 inline mr-1"/>Start: <b>{date(s.startDate)}</b> • End: <b>{date(s.expiryDate)}</b></div><div>₹{Number(s.amountPaid||0).toLocaleString('en-IN')} • {s.paymentMethod}</div><div><MapPin className="w-3.5 h-3.5 inline mr-1"/>{loc(s)}</div>{s.receipt_number&&<div className="font-bold">Receipt: {s.receipt_number}</div>}</div><div className="mt-3 flex flex-wrap gap-2"><button onClick={()=>{setSelected(s);setModal('receipt')}} className="px-2.5 py-1.5 rounded-lg bg-gray-900 text-white text-[10px] font-bold"><FileText className="w-3 h-3 inline mr-1"/>Receipt</button>{s.verificationStatus==='Pending'&&<button disabled={busy} onClick={()=>void approve(s)} className="px-2.5 py-1.5 rounded-lg bg-emerald-700 text-white text-[10px] font-bold"><CheckCircle2 className="w-3 h-3 inline mr-1"/>Approve</button>}{s.verificationStatus==='Approved'&&<><button onClick={()=>{setSelected(s);setModal('extend')}} className="px-2.5 py-1.5 rounded-lg bg-amber-500 text-black text-[10px] font-bold"><Plus className="w-3 h-3 inline mr-1"/>Extend</button><button onClick={()=>send(s)} className="px-2.5 py-1.5 rounded-lg bg-green-600 text-white text-[10px] font-bold"><Send className="w-3 h-3 inline mr-1"/>Send</button></>}</div></article>)}{!visible.length&&<div className="col-span-full text-center py-8 text-sm text-gray-500">No subscribers match.</div>}</div>
+ {modal==='receipt'&&selected&&<Modal title="Subscription Receipt" close={()=>setModal(null)}><Receipt s={selected}/><div className="flex flex-wrap gap-2 mt-4"><button onClick={()=>print(selected)} className="px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold">Print / Save PDF</button><button onClick={()=>send(selected)} className="px-3 py-2 rounded-xl bg-green-600 text-white text-xs font-bold"><MessageCircle className="w-4 h-4 inline mr-1"/>Send Receipt</button><button onClick={()=>setModal('extend')} className="px-3 py-2 rounded-xl bg-amber-500 text-black text-xs font-bold">Extend</button></div><h4 className="font-black text-xs uppercase mt-5">Extension History</h4>{history.length?history.map(x=><div key={x.id} className="mt-2 border rounded-lg p-2 text-[11px]"><b>+{x.days_added} days</b> • {x.reason} • {date(x.old_expiry_date)} → {date(x.new_expiry_date)}<br/>{dateTime(x.created_at)}</div>):<div className="text-xs text-gray-500 mt-2">No extensions yet.</div>}</Modal>}
+ {modal==='extend'&&selected&&<Modal title={`Extend ${selected.customerName}`} close={()=>setModal(null)}><form onSubmit={extend} className="space-y-3"><div className="grid grid-cols-4 gap-2">{['1','3','7','15'].map(x=><button type="button" key={x} onClick={()=>setDays(x)} className={`border rounded-lg p-2 text-xs font-bold ${days===x?'bg-amber-400':''}`}>{x}d</button>)}</div><label className="text-xs font-bold block">Days<input type="number" min="1" value={days} onChange={e=>setDays(e.target.value)} className="w-full border rounded-lg p-2 mt-1"/></label><label className="text-xs font-bold block">Reason<select value={reason} onChange={e=>setReason(e.target.value)} className="w-full border rounded-lg p-2 mt-1"><option>Subscriber unavailable / out of station</option><option>Vacation</option><option>Medical / personal</option><option>Other</option></select></label><label className="text-xs font-bold block">Notes<textarea value={notes} onChange={e=>setNotes(e.target.value)} className="w-full border rounded-lg p-2 mt-1"/></label><div className="rounded-xl bg-gray-50 p-3 text-xs">Current expiry: <b>{date(selected.expiryDate)}</b><br/>New expiry: <b>{date(new Date(new Date(`${selected.expiryDate}T00:00:00`).getTime()+Number(days)*86400000).toISOString())}</b></div><button disabled={busy} className="w-full py-2.5 rounded-xl bg-[#124E33] text-white font-black text-xs">{busy?'Saving…':'Confirm Extension'}</button></form></Modal>}
+ {modal==='add'&&<Modal title="Add Subscriber Manually" close={()=>setModal(null)}><form onSubmit={manual} className="grid grid-cols-1 sm:grid-cols-2 gap-3">{[['customerName','Name'],['mobileNumber','Mobile'],['whatsappNumber','WhatsApp'],['amountPaid','Amount Paid'],['paymentDate','Payment Date'],['startDate','Start Date'],['transactionId','UTR / Transaction'],['houseFlatNo','Flat / House'],['buildingSociety','Building / Society'],['streetArea','Street / Area'],['landmark','Landmark'],['city','City'],['pinCode','PIN Code'],['lunchDeliveryPoint','Delivery Point']].map(([k,l])=><label key={k} className="text-xs font-bold">{l}<input required={['customerName','mobileNumber','amountPaid','paymentDate','startDate'].includes(k)} type={k.includes('Date')?'date':k==='amountPaid'?'number':'text'} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} className="w-full border rounded-lg p-2 mt-1"/></label>)}<label className="text-xs font-bold">Plan<select value={form.packageType} onChange={e=>setForm({...form,packageType:e.target.value,packageCode:e.target.value==='EGG DELIGHT'?'ED':e.target.value==='NON-VEG CLUB'?'NVC':'VC'})} className="w-full border rounded-lg p-2 mt-1"><option>VEG CLASSIC</option><option>EGG DELIGHT</option><option>NON-VEG CLUB</option></select></label><label className="text-xs font-bold">Meal<select value={form.mealPreference} onChange={e=>setForm({...form,mealPreference:e.target.value})} className="w-full border rounded-lg p-2 mt-1"><option>Lunch Only</option><option>Dinner Only</option><option>Lunch + Dinner</option></select></label><label className="text-xs font-bold">Duration<select value={form.duration} onChange={e=>setForm({...form,duration:e.target.value})} className="w-full border rounded-lg p-2 mt-1"><option>1 Month</option><option>3 Months</option><option>6 Months</option></select></label><label className="text-xs font-bold">Payment<select value={form.paymentMethod} onChange={e=>setForm({...form,paymentMethod:e.target.value})} className="w-full border rounded-lg p-2 mt-1"><option>UPI</option><option>Bank Transfer</option><option>QR Code</option><option>Corporate Bank Transfer</option></select></label><div className="sm:col-span-2"><button disabled={busy} className="w-full py-2.5 rounded-xl bg-[#124E33] text-white font-black text-xs">{busy?'Saving…':'Add & Generate Receipt'}</button></div></form></Modal>}
+ </section>;
 };
-
-export const SubscriptionActivityPanel: React.FC<Props> = ({ subscriptions }) => {
-  const today = new Date();
-  const stats = useMemo(() => getSubscriptionActivityMetrics(subscriptions, today), [subscriptions]);
-  const activeSubscriptions = useMemo(() => [...subscriptions]
-    .filter(s => s.active && s.verificationStatus === 'Approved')
-    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()), [subscriptions]);
-
-  return (
-    <section className="bg-white rounded-2xl border-2 border-emerald-100 shadow-sm overflow-hidden">
-      <div className="p-5 border-b bg-gradient-to-r from-emerald-50 to-white">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-600"/><h3 className="font-black text-base uppercase tracking-wide">Subscription Activity</h3></div>
-            <p className="text-[11px] text-gray-500 mt-1">A dedicated view for monthly subscriptions — separate from Instant Order Requests.</p>
-          </div>
-          <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-full">Live</span>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-          <Metric label="Active" value={stats.active} />
-          <Metric label="New Today" value={stats.newToday} />
-          <Metric label="Started This Week" value={stats.startedThisWeek} />
-          <Metric label="Expiring Soon" value={stats.expiringSoon} />
-        </div>
-      </div>
-
-      <div className="p-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {activeSubscriptions.map(s => {
-            const day = getSubscriptionDay(s.startDate, today);
-            const expiry = new Date(`${s.expiryDate.slice(0, 10)}T00:00:00`);
-            const todayMidnight = new Date(`${today.toISOString().slice(0, 10)}T00:00:00`);
-            const daysRemaining = Number.isNaN(expiry.getTime()) ? null : Math.ceil((expiry.getTime() - todayMidnight.getTime()) / 86400000);
-            const isNew = day === 1;
-            const expiring = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 3;
-
-            return (
-              <article key={s.id} className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-emerald-50/40 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div><div className="font-black text-sm text-gray-900">{s.customerName}</div><div className="text-[11px] text-gray-500">{s.packageType}</div></div>
-                  <div className="flex gap-1 flex-wrap justify-end">
-                    {isNew && <span className="text-[9px] font-black uppercase bg-blue-100 text-blue-800 px-2 py-1 rounded-full">NEW</span>}
-                    <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full"><CheckCircle2 className="w-3 h-3"/> ACTIVE</span>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-end gap-2">
-                  <div className="text-2xl font-black text-[#124E33]">Day {day}</div>
-                  <div className="text-[10px] font-bold text-gray-400 pb-1 uppercase">of subscription</div>
-                </div>
-
-                <div className="mt-3 space-y-1.5 text-[11px] text-gray-600">
-                  <div className="flex items-center gap-2"><CalendarDays className="w-3.5 h-3.5"/> Started: <b>{formatDate(s.startDate)}</b></div>
-                  <div className="flex items-center gap-2"><Clock3 className="w-3.5 h-3.5"/> Expires: <b>{formatDate(s.expiryDate)}</b></div>
-                  <div className="flex items-center gap-2"><UsersRound className="w-3.5 h-3.5"/> {s.mealPreference} • ₹{Number(s.amountPaid || 0).toLocaleString('en-IN')}</div>
-                </div>
-
-                {expiring && <div className="mt-3 text-[10px] font-black uppercase text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-2.5 py-2">Expires in {daysRemaining === 0 ? 'today' : `${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`}</div>}
-              </article>
-            );
-          })}
-          {activeSubscriptions.length === 0 && <div className="md:col-span-2 xl:col-span-3 rounded-xl border border-dashed p-6 text-center text-sm text-gray-500">No active subscriptions yet.</div>}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const Metric: React.FC<{ label: string; value: number }> = ({ label, value }) => (
-  <div className="rounded-xl border bg-white p-3">
-    <div className="text-[10px] uppercase font-bold text-gray-500">{label}</div>
-    <div className="text-2xl font-black text-gray-900 mt-1">{value}</div>
-  </div>
-);
-
+const Metric=({l,v}:{l:string;v:number})=><div className="rounded-xl border bg-white p-3"><div className="text-[10px] uppercase font-bold text-gray-500">{l}</div><div className="text-2xl font-black">{v}</div></div>;
+const Modal=({title,close,children}:{title:string;close:()=>void;children:React.ReactNode})=><div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"><div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"><div className="sticky top-0 bg-white border-b p-4 flex justify-between"><b>{title}</b><button onClick={close}><X/></button></div><div className="p-5">{children}</div></div></div>;
+const Receipt=({s}:{s:Raw})=><div className="space-y-3 text-xs"><div className="rounded-xl bg-[#5C1111] text-white p-4 flex justify-between"><div><b className="text-lg">Bring My Bite</b><div>Subscription Receipt</div></div><b>{s.receipt_number||'Pending approval'}</b></div><div className="grid grid-cols-2 gap-2">{[['Subscriber',s.customerName],['Mobile',s.mobileNumber],['Plan',`${s.packageType} • ${s.duration}`],['Payment',`₹${Number(s.amountPaid||0).toLocaleString('en-IN')} • ${s.paymentMethod}`],['Payment Date',date(s.paymentDate)],['Transaction / UTR',s.transactionId||'—'],['Start Date',date(s.startDate)],['Original End',date(s.original_expiry_date||s.expiryDate)],['Current End',date(s.expiryDate)],['Days Used',String(used(s.startDate))],['Days Remaining',String(left(s.expiryDate))],['Extension',`+${Number(s.total_extension_days||0)} days`],['Location',loc(s)],['Status',s.verificationStatus==='Approved'&&left(s.expiryDate)>0?'ACTIVE':s.verificationStatus]].map(([l,v],i)=><div key={i} className="border rounded-lg p-2 col-span-2 sm:col-span-1"><div className="text-[9px] uppercase text-gray-500">{l}</div><b>{v}</b></div>)}</div></div>;
 export default SubscriptionActivityPanel;
