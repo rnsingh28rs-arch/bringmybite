@@ -3,14 +3,15 @@ import { useApp } from '../../context/AppContext';
 import { PackageType, CustomerCategory, MealPreference, SubscriptionDuration, PaymentMethod } from '../../types';
 import { PaymentDetailsCard } from '../common/PaymentDetailsCard';
 import { useCms } from '../../cms/CmsContext';
-import { X, CheckCircle, Printer, Calendar, MapPin, ExternalLink } from 'lucide-react';
+import { X, CheckCircle, Printer, Calendar, MapPin, ExternalLink, Utensils } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { addStoredOrder, saveLastOrderTracking } from '../../utils/orderStore';
 import { createMapLocationLink } from '../../utils/customerLocation.mjs';
+import { getSubscriptionPlan, getSubscriptionPlanOptions } from '../../utils/subscriptionPlans.js';
 
 export const RegistrationModal: React.FC = () => {
   const { registrationFields } = useCms();
-  const { isRegistrationOpen, setIsRegistrationOpen, selectedPackageForRegistration, addSubscription, pricing } = useApp();
+  const { isRegistrationOpen, setIsRegistrationOpen, selectedPackageForRegistration, addSubscription } = useApp();
   const [fullName, setFullName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -24,8 +25,8 @@ export const RegistrationModal: React.FC = () => {
   const [mapLatitude, setMapLatitude] = useState<number | undefined>();
   const [mapLongitude, setMapLongitude] = useState<number | undefined>();
   const [isLocating, setIsLocating] = useState(false);
-  const [packageType, setPackageType] = useState<PackageType>(selectedPackageForRegistration);
-  const [mealPreference] = useState<MealPreference>('Lunch + Dinner');
+  const [mealPreference, setMealPreference] = useState<MealPreference>('Lunch Only');
+  const [packageType, setPackageType] = useState<PackageType>('VEG CLASSIC');
   const [startDate] = useState(new Date().toISOString().split('T')[0]);
   const [duration, setDuration] = useState<SubscriptionDuration>('1 Month');
   const [paymentMethod] = useState<PaymentMethod>('UPI');
@@ -33,14 +34,26 @@ export const RegistrationModal: React.FC = () => {
   const [paymentSlip, setPaymentSlip] = useState('');
   const [registeredSub, setRegisteredSub] = useState<any | null>(null);
 
-  useEffect(() => { setPackageType(selectedPackageForRegistration); }, [selectedPackageForRegistration]);
+  useEffect(() => {
+    setPackageType(selectedPackageForRegistration);
+    if (!getSubscriptionPlanOptions('Lunch Only').some((p) => p.packageType === selectedPackageForRegistration)) {
+      setPackageType('VEG CLASSIC');
+    }
+  }, [selectedPackageForRegistration]);
+
+  useEffect(() => {
+    if (mealPreference === 'Lunch Only' && packageType !== 'VEG CLASSIC') setPackageType('VEG CLASSIC');
+  }, [mealPreference, packageType]);
+
   if (!isRegistrationOpen) return null;
 
-  const baseMonthlyPrice = packageType === 'VEG CLASSIC' ? pricing.vegMonthly : packageType === 'EGG DELIGHT' ? pricing.eggMonthly : pricing.nonVegMonthly;
+  const selectedPlan = getSubscriptionPlan(mealPreference, packageType);
+  const baseMonthlyPrice = selectedPlan.price;
   const durationMultiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;
   const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 0.90 : 1;
   const calculatedTotal = Math.round(baseMonthlyPrice * durationMultiplier * discountFactor);
   const discountLabel = duration === '3 Months' ? '5% multi-month discount' : duration === '6 Months' ? '10% multi-month discount' : '';
+  const options = getSubscriptionPlanOptions(mealPreference);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -53,21 +66,13 @@ export const RegistrationModal: React.FC = () => {
     if (!navigator.geolocation) { alert('Current location is not supported by this browser. You can continue with the delivery address instead.'); return; }
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition((position) => {
-      const latitude = position.coords.latitude;
-      const longitude = position.coords.longitude;
-      setMapLatitude(latitude);
-      setMapLongitude(longitude);
-      setMapLocationLink(createMapLocationLink(latitude, longitude));
-      setIsLocating(false);
-    }, () => {
-      setIsLocating(false);
-      alert('We could not get your current location. Please allow location permission and try again, or continue with your address.');
-    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+      const latitude = position.coords.latitude; const longitude = position.coords.longitude;
+      setMapLatitude(latitude); setMapLongitude(longitude); setMapLocationLink(createMapLocationLink(latitude, longitude)); setIsLocating(false);
+    }, () => { setIsLocating(false); alert('We could not get your current location. Please allow location permission and try again, or continue with your address.'); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (baseMonthlyPrice <= 0) { alert('This subscription price is not configured. Please ask the administrator to configure the current rate.'); return; }
     if (!fullName.trim() || !mobileNumber.trim()) { alert('Please enter your Full Name and Mobile Number.'); return; }
     if (!transactionId.trim()) { alert(`Please pay ₹${calculatedTotal.toLocaleString()} and enter the UTR / transaction reference.`); return; }
     if (!paymentSlip) { alert('Please attach the payment screenshot / receipt.'); return; }
@@ -82,8 +87,7 @@ export const RegistrationModal: React.FC = () => {
       lunchDeliveryPoint: category === 'College Student' ? 'College Gate' : 'Office Gate',
       companyName: category === 'Working Professional' ? companyName : undefined,
       streetArea: homeAddress || (category === 'College Student' ? `${collegeName} Gate Area` : `${companyName} Vicinity`),
-      pinCode: pinCode || '700091', mapLocationLink: mapLocationLink.trim() || undefined,
-      mapLatitude, mapLongitude,
+      pinCode: pinCode || '700091', mapLocationLink: mapLocationLink.trim() || undefined, mapLatitude, mapLongitude,
       packageType, packageCode: packageType === 'VEG CLASSIC' ? 'VC' : packageType === 'EGG DELIGHT' ? 'ED' : 'NVC',
       monthlyPrice: baseMonthlyPrice, mealPreference, startDate, duration, paymentMethod,
       transactionId: transactionId.trim(), amountPaid: calculatedTotal, totalAmount: calculatedTotal,
@@ -92,7 +96,7 @@ export const RegistrationModal: React.FC = () => {
     });
 
     try {
-      await addStoredOrder({ id: sub.id, kind: 'subscription', customerName: fullName, phone: mobileNumber, whatsapp: whatsappNumber || mobileNumber, planOrMeal: `${packageType} • ${duration} • ${mealPreference}`, amount: calculatedTotal, utrNumber: transactionId.trim(), paymentSlip, paymentStatus: 'Pending Verification', status: 'Pending Verification', details: `${category} • ${collegeName || companyName || homeAddress || ''}${mapLocationLink ? ` • GPS: ${mapLocationLink}` : ''} • ${discountLabel || 'Standard monthly pricing'}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      await addStoredOrder({ id: sub.id, kind: 'subscription', customerName: fullName, phone: mobileNumber, whatsapp: whatsappNumber || mobileNumber, planOrMeal: `${selectedPlan.label} • ${duration} • ${mealPreference}`, amount: calculatedTotal, utrNumber: transactionId.trim(), paymentSlip, paymentStatus: 'Pending Verification', status: 'Pending Verification', details: `${category} • ${collegeName || companyName || homeAddress || ''}${mapLocationLink ? ` • GPS: ${mapLocationLink}` : ''} • ${discountLabel || 'Standard subscription pricing'}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
       saveLastOrderTracking({ id: sub.id, phone: mobileNumber });
     } catch (error) { console.error('Subscription payment proof persistence failed:', error); alert('Your payment proof could not be saved. Please check your connection and submit again.'); return; }
     try { confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 } }); } catch {}
@@ -102,17 +106,20 @@ export const RegistrationModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
       <div className="bg-[#FAF7F2] rounded-2xl w-full max-w-3xl shadow-2xl border-2 border-[#124E33] overflow-hidden flex flex-col max-h-[94vh]">
-        <div className="bg-gradient-to-r from-[#124E33] via-[#1B5E20] to-[#0C3822] text-white p-4 sm:p-5 flex items-center justify-between border-b border-emerald-900 shrink-0"><div><h2 className="text-lg sm:text-xl font-bold font-serif-title">Monthly Subscription Registration</h2><p className="text-[11px] sm:text-xs text-emerald-200">Select duration → pay the exact calculated amount → upload payment proof.</p></div><button onClick={() => { setIsRegistrationOpen(false); setRegisteredSub(null); }} className="p-1.5 rounded-full text-emerald-200 hover:text-white hover:bg-emerald-800"><X className="w-6 h-6" /></button></div>
+        <div className="bg-gradient-to-r from-[#124E33] via-[#1B5E20] to-[#0C3822] text-white p-4 sm:p-5 flex items-center justify-between border-b border-emerald-900 shrink-0">
+          <div><h2 className="text-lg sm:text-xl font-bold font-serif-title">Subscription Registration</h2><p className="text-[11px] sm:text-xs text-emerald-200">Choose Lunch or Dinner → select your thali → pay the exact amount.</p></div>
+          <button onClick={() => { setIsRegistrationOpen(false); setRegisteredSub(null); }} className="p-1.5 rounded-full text-emerald-200 hover:text-white hover:bg-emerald-800"><X className="w-6 h-6" /></button>
+        </div>
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FAF7F2]">
           {registeredSub ? (
             <div className="bg-white rounded-2xl p-6 sm:p-8 border-2 border-emerald-600 shadow-md space-y-5 text-center">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto"><CheckCircle className="w-10 h-10" /></div>
               <div><span className="text-xs font-bold uppercase tracking-widest text-[#D99B26]">Subscription Submitted</span><h3 className="text-2xl font-extrabold text-[#124E33]">Welcome to Bring My Bite!</h3><p className="text-xs sm:text-sm text-gray-600">Payment proof submitted for verification. Service activates after admin verification.</p></div>
               <div className="max-w-md mx-auto bg-[#FAF7F2] p-4 rounded-xl border text-left text-xs space-y-2">
-                <div className="flex justify-between border-b pb-1.5"><span>Subscription:</span><strong>{registeredSub.packageType} • {registeredSub.duration}</strong></div>
+                <div className="flex justify-between border-b pb-1.5"><span>Subscription:</span><strong>{selectedPlan.label} • {registeredSub.duration}</strong></div>
+                <div className="flex justify-between border-b pb-1.5"><span>Meal plan:</span><strong>{registeredSub.mealPreference}</strong></div>
                 <div className="flex justify-between border-b pb-1.5"><span>Monthly rate:</span><strong>₹{Number(registeredSub.monthlyPrice || 0).toLocaleString()}</strong></div>
-                <div className="flex justify-between border-b pb-1.5"><span>Amount paid:</span><strong className="text-emerald-800">₹{Number(registeredSub.amountPaid || 0).toLocaleString()}</strong></div>
-                <div className="flex justify-between"><span>Meal plan:</span><strong>{registeredSub.mealPreference}</strong></div>
+                <div className="flex justify-between"><span>Amount paid:</span><strong className="text-emerald-800">₹{Number(registeredSub.amountPaid || 0).toLocaleString()}</strong></div>
                 {registeredSub.mapLocationLink && <a href={registeredSub.mapLocationLink} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-emerald-800 font-bold pt-1"><MapPin className="w-3.5 h-3.5" />Delivery map location <ExternalLink className="w-3 h-3" /></a>}
               </div>
               <div className="flex items-center justify-center gap-3"><button onClick={() => window.print()} className="px-4 py-2 bg-gray-100 text-gray-800 rounded-xl text-xs font-bold flex items-center gap-1.5 border"><Printer className="w-3.5 h-3.5" />Print</button><button onClick={() => { setIsRegistrationOpen(false); setRegisteredSub(null); }} className="px-6 py-2 bg-[#124E33] text-white rounded-xl text-xs font-bold">Close</button></div>
@@ -120,13 +127,29 @@ export const RegistrationModal: React.FC = () => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="bg-white rounded-xl border p-4 shadow-sm space-y-4">
-                <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[#124E33]" /><span className="text-xs font-bold uppercase tracking-wider text-gray-700">Subscription Plan</span></div>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['VEG CLASSIC','EGG DELIGHT','NON-VEG CLUB'] as PackageType[]).map((pkg) => { const price=pkg==='VEG CLASSIC'?pricing.vegMonthly:pkg==='EGG DELIGHT'?pricing.eggMonthly:pricing.nonVegMonthly; return <button key={pkg} type="button" onClick={()=>setPackageType(pkg)} className={`p-3 rounded-xl border-2 ${packageType===pkg?'border-emerald-600 bg-emerald-50':'border-gray-200 bg-white'}`}><div className="text-xs font-bold">{pkg}</div><div className="text-lg font-extrabold text-emerald-800 mt-1">₹{price.toLocaleString()}</div></button>; })}
+                <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[#124E33]" /><span className="text-xs font-bold uppercase tracking-wider text-gray-700">Choose Subscription Timing</span></div>
+                <div className="grid grid-cols-2 gap-3">
+                  {(['Lunch Only','Dinner Only'] as MealPreference[]).map((slot) => (
+                    <button key={slot} type="button" onClick={() => setMealPreference(slot)} className={`rounded-xl border-2 p-4 text-left transition ${mealPreference === slot ? 'border-[#124E33] bg-emerald-50 shadow-sm' : 'border-gray-200 bg-white'}`}>
+                      <div className="flex items-center gap-2 text-sm font-black text-[#124E33]"><Utensils className="w-4 h-4" />{slot === 'Lunch Only' ? 'Lunch Plan' : 'Dinner Plan'}</div>
+                      <div className="mt-1 text-[11px] text-gray-500">{slot === 'Lunch Only' ? 'Veg Classic Thali only' : 'Veg Classic • Egg Delight • Non-Veg Club'}</div>
+                    </button>
+                  ))}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end"><label className="text-xs font-semibold text-gray-700">Duration<select value={duration} onChange={(e)=>setDuration(e.target.value as SubscriptionDuration)} className="mt-1 w-full border border-gray-300 rounded-lg p-2"><option>1 Month</option><option>3 Months</option><option>6 Months</option></select></label><div className="text-xs text-gray-500">Monthly rate<strong className="block text-gray-900 text-base">₹{baseMonthlyPrice.toLocaleString()}</strong></div><div className="text-xs text-gray-500">Total payable<strong className="block text-emerald-800 text-xl">₹{calculatedTotal.toLocaleString()}</strong>{discountLabel && <span className="text-emerald-700">{discountLabel}</span>}</div></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {options.map((plan) => (
+                    <button key={plan.packageType} type="button" onClick={() => setPackageType(plan.packageType)} className={`p-3 rounded-xl border-2 text-left ${packageType === plan.packageType ? 'border-emerald-600 bg-emerald-50' : 'border-gray-200 bg-white'}`}>
+                      <div className="text-xs font-black">{plan.label}</div><div className="text-lg font-extrabold text-emerald-800 mt-1">₹{plan.price.toLocaleString()}</div><div className="text-[9px] text-gray-500">per month</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                  <label className="text-xs font-semibold text-gray-700">Duration<select value={duration} onChange={(e)=>setDuration(e.target.value as SubscriptionDuration)} className="mt-1 w-full border border-gray-300 rounded-lg p-2"><option>1 Month</option><option>3 Months</option><option>6 Months</option></select></label>
+                  <div className="text-xs text-gray-500">Monthly rate<strong className="block text-gray-900 text-base">₹{baseMonthlyPrice.toLocaleString()}</strong></div>
+                  <div className="text-xs text-gray-500">Total payable<strong className="block text-emerald-800 text-xl">₹{calculatedTotal.toLocaleString()}</strong>{discountLabel && <span className="text-emerald-700">{discountLabel}</span>}</div>
+                </div>
               </div>
-              <PaymentDetailsCard amount={calculatedTotal} orderReference={`${packageType} • ${duration}`} />
+              <PaymentDetailsCard amount={calculatedTotal} orderReference={`${selectedPlan.label} • ${mealPreference} • ${duration}`} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="text-xs font-semibold text-gray-700">Full Name<input value={fullName} onChange={(e)=>setFullName(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
                 <label className="text-xs font-semibold text-gray-700">Mobile Number<input value={mobileNumber} onChange={(e)=>setMobileNumber(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
@@ -137,10 +160,7 @@ export const RegistrationModal: React.FC = () => {
                 <label className="text-xs font-semibold text-gray-700">Address / Area<input value={homeAddress} onChange={(e)=>setHomeAddress(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
                 <label className="text-xs font-semibold text-gray-700">PIN Code<input value={pinCode} onChange={(e)=>setPinCode(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
                 <div className="sm:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div><div className="text-xs font-bold text-emerald-900 flex items-center gap-1.5"><MapPin className="w-4 h-4" />Delivery Map Location <span className="font-normal text-emerald-700">(Optional)</span></div><p className="text-[11px] text-emerald-800 mt-1">Use your current location so the delivery team can find your gate more easily. We do not track your location continuously.</p></div>
-                    <button type="button" onClick={useCurrentLocation} disabled={isLocating} className="shrink-0 px-3 py-2 rounded-lg bg-[#124E33] text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-60"><MapPin className="w-3.5 h-3.5" />{isLocating ? 'Locating…' : 'Use Current Location'}</button>
-                  </div>
+                  <div className="flex items-center justify-between gap-3"><div><div className="text-xs font-bold text-emerald-900 flex items-center gap-1.5"><MapPin className="w-4 h-4" />Delivery Map Location <span className="font-normal text-emerald-700">(Optional)</span></div><p className="text-[11px] text-emerald-800 mt-1">Use your current location so the delivery team can find your gate more easily.</p></div><button type="button" onClick={useCurrentLocation} disabled={isLocating} className="shrink-0 px-3 py-2 rounded-lg bg-[#124E33] text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-60"><MapPin className="w-3.5 h-3.5" />{isLocating ? 'Locating…' : 'Use Current Location'}</button></div>
                   {mapLocationLink && <div className="mt-3 flex flex-wrap items-center gap-2"><span className="text-[11px] font-semibold text-emerald-900">Location captured: {mapLatitude?.toFixed(6)}, {mapLongitude?.toFixed(6)}</span><a href={mapLocationLink} target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-lg bg-white border border-emerald-300 text-emerald-800 text-[11px] font-bold inline-flex items-center gap-1">Open Map <ExternalLink className="w-3 h-3" /></a></div>}
                 </div>
                 <label className="text-xs font-semibold text-gray-700 sm:col-span-2">UTR / Transaction ID<input value={transactionId} onChange={e=>setTransactionId(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
