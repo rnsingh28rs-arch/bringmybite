@@ -107,7 +107,7 @@ export const RegistrationModal: React.FC = () => {
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
       <div className="bg-[#FAF7F2] rounded-2xl w-full max-w-3xl shadow-2xl border-2 border-[#124E33] overflow-hidden flex flex-col max-h-[94vh]">
         <div className="bg-gradient-to-r from-[#124E33] via-[#1B5E20] to-[#0C3822] text-white p-4 sm:p-5 flex items-center justify-between border-b border-emerald-900 shrink-0">
-          <div><h2 className="text-lg sm:text-xl font-bold font-serif-title">Subscription Registration</h2><p className="text-[11px] sm:text-xs text-emerald-200">Choose Lunch or Dinner → select your thali → pay the exact amount.</p></div>
+          <div><h2 className="text-lg sm:text-xl font-bold font-serif-title">Subscription Registration</h2><p className="text-[11px] sm:text-xs text-emerald-200">Choose Lunch, Dinner or Monthly → select your thali → pay the exact amount.</p></div>
           <button onClick={() => { setIsRegistrationOpen(false); setRegisteredSub(null); }} className="p-1.5 rounded-full text-emerald-200 hover:text-white hover:bg-emerald-800"><X className="w-6 h-6" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FAF7F2]">
@@ -127,12 +127,12 @@ export const RegistrationModal: React.FC = () => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="bg-white rounded-xl border p-4 shadow-sm space-y-4">
-                <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[#124E33]" /><span className="text-xs font-bold uppercase tracking-wider text-gray-700">Choose Subscription Timing</span></div>
-                <div className="grid grid-cols-2 gap-3">
-                  {(['Lunch Only','Dinner Only'] as MealPreference[]).map((slot) => (
+                <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[#124E33]" /><span className="text-xs font-bold uppercase tracking-wider text-gray-700">Choose Subscription Plan</span></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(['Lunch Only','Dinner Only','Lunch + Dinner'] as MealPreference[]).map((slot) => (
                     <button key={slot} type="button" onClick={() => setMealPreference(slot)} className={`rounded-xl border-2 p-4 text-left transition ${mealPreference === slot ? 'border-[#124E33] bg-emerald-50 shadow-sm' : 'border-gray-200 bg-white'}`}>
-                      <div className="flex items-center gap-2 text-sm font-black text-[#124E33]"><Utensils className="w-4 h-4" />{slot === 'Lunch Only' ? 'Lunch Plan' : 'Dinner Plan'}</div>
-                      <div className="mt-1 text-[11px] text-gray-500">{slot === 'Lunch Only' ? 'Veg Classic Thali only' : 'Veg Classic • Egg Delight • Non-Veg Club'}</div>
+                      <div className="flex items-center gap-2 text-sm font-black text-[#124E33]"><Utensils className="w-4 h-4" />{slot === 'Lunch Only' ? 'Lunch Plan' : slot === 'Dinner Only' ? 'Dinner Plan' : 'Monthly Subscription'}</div>
+                      <div className="mt-1 text-[11px] text-gray-500">{slot === 'Lunch Only' ? 'Lunch only • Veg Classic Thali' : slot === 'Dinner Only' ? 'Dinner only • Veg, Egg & Non-Veg' : 'Lunch + Dinner • 3 monthly plans'}</div>
                     </button>
                   ))}
                 </div>
