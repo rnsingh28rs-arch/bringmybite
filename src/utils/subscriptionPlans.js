@@ -8,9 +8,9 @@ const PLAN_CATALOG = {
     { mealPreference: 'Dinner Only', packageType: 'NON-VEG CLUB', label: 'Non-Veg Club Thali', price: 2699 }
   ],
   'Lunch + Dinner': [
-    { mealPreference: 'Lunch + Dinner', packageType: 'VEG CLASSIC', label: 'Veg Classic Package', price: 3700 },
-    { mealPreference: 'Lunch + Dinner', packageType: 'EGG DELIGHT', label: 'Egg Delight Package', price: 3700 },
-    { mealPreference: 'Lunch + Dinner', packageType: 'NON-VEG CLUB', label: 'Non-Veg Club Package', price: 3700 }
+    { mealPreference: 'Lunch + Dinner', packageType: 'VEG CLASSIC', label: 'Veg Classic Thali — Lunch + Dinner', price: 3700 },
+    { mealPreference: 'Lunch + Dinner', packageType: 'EGG DELIGHT', label: 'Egg Delight Thali — Lunch + Dinner', price: 4000 },
+    { mealPreference: 'Lunch + Dinner', packageType: 'NON-VEG CLUB', label: 'Non-Veg Club Thali — Lunch + Dinner', price: 4500 }
   ]
 };
 
