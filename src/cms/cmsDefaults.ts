@@ -48,12 +48,12 @@ export interface RegistrationFieldConfig {
 }
 
 export const DEFAULT_PRICING: PricingConfig = {
-  vegMonthly: 3500,
+  vegMonthly: 3700,
   eggMonthly: 4000,
   nonVegMonthly: 4500,
-  vegThaliInstant: 80,
-  eggThaliInstant: 100,
-  nonVegThaliInstant: 110
+  vegThaliInstant: 100,
+  eggThaliInstant: 120,
+  nonVegThaliInstant: 150
 };
 
 export const DEFAULT_PAYMENT = { ...OFFICIAL_BANK_DETAILS, qrUrl: '' };
@@ -83,8 +83,8 @@ const shared = {
 export const DEFAULT_BANNERS: BannerConfig[] = [
   {
     id: 'veg', sort_order: 1, active: true,
-    tag: '100% PURE VEGETARIAN', title: 'The Veg Classic Package', highlight_price: '₹3500', period: '/ Month',
-    thali_rate: '₹80 Instant Single Thali',
+    tag: '100% PURE VEGETARIAN', title: 'The Veg Classic Package', highlight_price: '₹3700', period: '/ Month',
+    thali_rate: '₹100 Instant Single Thali',
     description: 'Pure vegetarian homely meals crafted with fresh seasonal vegetables, daily changing dal tadka, jeera/steamed rice, 4 warm rotis & papad.',
     features: ['13 Meals / Week (Mon–Sun)', 'Lunch at Gate • Dinner at Home', '18–22g Balanced Protein', '100% Hygienic 5CP Trays'],
     package_key: 'VEG CLASSIC', thali_key: 'veg', image_url: FOOD_IMAGES.vegThali,
@@ -93,7 +93,7 @@ export const DEFAULT_BANNERS: BannerConfig[] = [
   {
     id: 'egg', sort_order: 2, active: true,
     tag: 'HIGH PROTEIN & TASTY', title: 'The Egg Delight Package', highlight_price: '₹4000', period: '/ Month',
-    thali_rate: '₹100 Instant Single Thali',
+    thali_rate: '₹120 Instant Single Thali',
     description: 'Specially curated for active students & professionals needing high bioavailability protein with rich Egg Curries, Bhurji Gravies, Kadhi & Paneer.',
     features: ['13 Meals / Week with Egg Delicacies', '20–24g Natural Protein per meal', 'Freshly Boiled & Farm Grade Eggs', '4 Warm Rotis in Premium Foil'],
     package_key: 'EGG DELIGHT', thali_key: 'egg', image_url: FOOD_IMAGES.eggThali,
@@ -103,7 +103,7 @@ export const DEFAULT_BANNERS: BannerConfig[] = [
   {
     id: 'non-veg', sort_order: 3, active: true,
     tag: 'WEEKLY CHICKEN SPECIAL', title: 'The Non-Veg Club Package', highlight_price: '₹4500', period: '/ Month',
-    thali_rate: '₹110 Instant Single Thali',
+    thali_rate: '₹150 Instant Single Thali',
     description: 'Rich, aromatic home-style Chicken Curry (3 pcs) and Egg specialties paired with hearty dals, seasonal greens, aromatic rice and rotis.',
     features: ['Chicken Curry & Egg Masala Rotations', '25–30g Muscle-Building Protein', 'Sunday Feast Included', 'Strictly Fresh & Clean Poultry'],
     package_key: 'NON-VEG CLUB', thali_key: 'non-veg', image_url: FOOD_IMAGES.nonVegThali,
@@ -112,12 +112,12 @@ export const DEFAULT_BANNERS: BannerConfig[] = [
   },
   {
     id: 'instant', sort_order: 4, active: true,
-    tag: 'FAST 45-MIN GATE DELIVERY', title: 'Instant One-Time Thali Orders', highlight_price: 'From ₹80', period: '/ Single Thali',
-    thali_rate: 'Veg: ₹80 | Egg: ₹100 | Non-Veg: ₹110',
-    description: 'Need a fresh, steaming hot meal delivered right now? Order an instant 5-compartment thali directly to your college gate or office reception with zero monthly lock-in.',
+    tag: 'FAST 45-MIN GATE DELIVERY', title: 'Instant One-Time Thali Orders', highlight_price: 'From ₹100', period: '/ Single Thali',
+    thali_rate: 'Veg: ₹100 | Egg: ₹120 | Non-Veg: ₹150',
+    description: 'Need a fresh, steaming hot meal delivered right now? Order an instant thali directly to your college gate or office reception with zero monthly lock-in.',
     features: ['No Monthly Lock-in Required', '45–60 Minute Direct Gate Delivery', 'Served in 5CP Leak-proof Tray', 'Includes 4 Roti, Papad, Salad & Achar'],
     package_key: 'VEG CLASSIC', thali_key: 'veg', image_url: FOOD_IMAGES.instantTiffin,
-    image_alt: 'Fresh Hot 5-Compartment Meal Tray', dish_highlights: ['Veg Thali (₹80)', 'Egg Thali (₹100)', 'Non-Veg Thali (₹110)', 'Steaming Hot Gate Drop'],
+    image_alt: 'Fresh Hot 5-Compartment Meal Tray', dish_highlights: ['Veg Thali (₹100)', 'Egg Thali (₹120)', 'Non-Veg Thali (₹150)', 'Steaming Hot Gate Drop'],
     tag_color: 'bg-yellow-100 text-yellow-900 border-yellow-300', badge_bg: 'from-emerald-900 to-amber-950', accent_color: 'text-[#F2C94C]', button_accent: 'bg-[#C88A24] hover:bg-[#A97116] text-white', card_border: 'border-[#C88A24]/40'
   }
 ];
