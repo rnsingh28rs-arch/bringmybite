@@ -6,7 +6,8 @@ const source = fs.readFileSync(new URL('../src/seo/SeoManager.tsx', import.meta.
 
 test('SEO manager refreshes metadata when SPA route changes', () => {
   assert.match(source, /location\.pathname/);
-  assert.doesNotMatch(source, /\}, \[\]\);/);
+  assert.match(source, /addEventListener\('popstate'/);
+  assert.match(source, /addEventListener\('hashchange'/);
 });
 
 test('SEO manager keeps canonical and crawler metadata under the managed marker', () => {
