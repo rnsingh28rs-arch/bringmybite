@@ -21,7 +21,6 @@ function normalizeFile(file) {
   const original = source;
   const rel = path.relative(process.cwd(), file).replaceAll('\\', '/');
 
-  // Central CMS defaults and any legacy display copies.
   source = source.replaceAll('vegMonthly: 3500', 'vegMonthly: 3700');
   source = source.replaceAll('vegThaliInstant: 80', 'vegThaliInstant: 100');
   source = source.replaceAll('eggThaliInstant: 100', 'eggThaliInstant: 120');
@@ -30,9 +29,9 @@ function normalizeFile(file) {
   source = source.replaceAll('₹3,500', '₹3,700');
 
   if (rel.endsWith('cmsDefaults.ts')) {
-    source = source.replaceAll("thali_rate: '₹80 Instant Single Thali'", "thali_rate: '₹100 Instant Single Thali'");
     source = source.replaceAll("thali_rate: '₹100 Instant Single Thali'", "thali_rate: '₹120 Instant Single Thali'");
     source = source.replaceAll("thali_rate: '₹110 Instant Single Thali'", "thali_rate: '₹150 Instant Single Thali'");
+    source = source.replaceAll("thali_rate: '₹80 Instant Single Thali'", "thali_rate: '₹100 Instant Single Thali'");
     source = source.replaceAll("highlight_price: 'From ₹80'", "highlight_price: 'From ₹100'");
     source = source.replaceAll("thali_rate: 'Veg: ₹80 | Egg: ₹100 | Non-Veg: ₹110'", "thali_rate: 'Veg: ₹100 | Egg: ₹120 | Non-Veg: ₹150'");
     source = source.replaceAll('Veg Thali (₹80)', 'Veg Thali (₹100)');
@@ -40,10 +39,7 @@ function normalizeFile(file) {
     source = source.replaceAll('Non-Veg Thali (₹110)', 'Non-Veg Thali (₹150)');
   }
 
-  // Mobile/native customer UI had literal legacy prices. Normalize those literals
-  // in this UI only; AppContext already supplies the CMS-backed pricing object.
   if (rel.endsWith('MobileAppView.tsx')) {
-    source = source.replaceAll('₹4,500', '₹4,500');
     source = source.replaceAll('₹110', '₹150');
     source = source.replaceAll('₹100', '₹120');
     source = source.replaceAll('₹80', '₹100');
