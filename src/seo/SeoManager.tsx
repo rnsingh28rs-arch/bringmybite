@@ -41,90 +41,106 @@ function removeJsonLd(id: string) {
   document.head.querySelector(`script[type="application/ld+json"][data-seo-id="${id}"]`)?.remove();
 }
 
+function clearRouteJsonLd() {
+  removeJsonLd('organization');
+  removeJsonLd('website');
+  removeJsonLd('product');
+  removeJsonLd('faq');
+}
+
 export function SeoManager() {
   useEffect(() => {
-    const route = getSeoRoute(window.location.pathname);
-    const publicPath = isPublicSeoPath(window.location.pathname);
+    const applySeo = () => {
+      const route = getSeoRoute(window.location.pathname);
+      const publicPath = isPublicSeoPath(window.location.pathname);
 
-    if (!route) {
-      document.title = 'Bring My Bite';
-      upsertMeta('name', 'robots', 'noindex,nofollow');
-      removeJsonLd('product');
-      removeJsonLd('faq');
-      return;
-    }
+      if (!route) {
+        document.title = 'Bring My Bite';
+        upsertMeta('name', 'robots', 'noindex,nofollow,noarchive');
+        clearRouteJsonLd();
+        return;
+      }
 
-    const canonical = canonicalUrl(route.path);
-    document.title = route.title;
-    upsertMeta('name', 'description', route.description);
-    upsertMeta('name', 'robots', publicPath ? 'index,follow,max-image-preview:large' : 'noindex,nofollow');
-    upsertMeta('name', 'theme-color', '#0C3822');
-    upsertMeta('property', 'og:type', 'website');
-    upsertMeta('property', 'og:title', route.title);
-    upsertMeta('property', 'og:description', route.description);
-    upsertMeta('property', 'og:url', canonical);
-    upsertMeta('property', 'og:site_name', 'Bring My Bite');
-    upsertMeta('property', 'og:locale', 'en_IN');
-    upsertMeta('name', 'twitter:card', 'summary');
-    upsertMeta('name', 'twitter:title', route.title);
-    upsertMeta('name', 'twitter:description', route.description);
-    upsertLink('canonical', canonical);
+      const canonical = canonicalUrl(route.path);
+      document.title = route.title;
+      upsertMeta('name', 'description', route.description);
+      upsertMeta('name', 'robots', publicPath ? 'index,follow,max-image-preview:large' : 'noindex,nofollow,noarchive');
+      upsertMeta('name', 'theme-color', '#0C3822');
+      upsertMeta('property', 'og:type', 'website');
+      upsertMeta('property', 'og:title', route.title);
+      upsertMeta('property', 'og:description', route.description);
+      upsertMeta('property', 'og:url', canonical);
+      upsertMeta('property', 'og:site_name', 'Bring My Bite');
+      upsertMeta('property', 'og:locale', 'en_IN');
+      upsertMeta('name', 'twitter:card', 'summary');
+      upsertMeta('name', 'twitter:title', route.title);
+      upsertMeta('name', 'twitter:description', route.description);
+      upsertLink('canonical', canonical);
 
-    upsertJsonLd('organization', {
-      '@context': 'https://schema.org',
-      '@type': 'Organization',
-      name: 'Bring My Bite',
-      alternateName: 'Shree Foods',
-      url: SEO_ORIGIN,
-      telephone: '+91 9315075165',
-    });
-
-    upsertJsonLd('website', {
-      '@context': 'https://schema.org',
-      '@type': 'WebSite',
-      name: 'Bring My Bite',
-      url: SEO_ORIGIN,
-      description: route.description,
-    });
-
-    if (route.kind === 'product') {
-      upsertJsonLd('product', {
+      upsertJsonLd('organization', {
         '@context': 'https://schema.org',
-        '@type': 'Product',
-        name: route.heading,
-        description: route.intro,
-        brand: { '@type': 'Brand', name: 'Bring My Bite' },
-        url: canonical,
+        '@type': 'Organization',
+        name: 'Bring My Bite',
+        alternateName: 'Shree Foods',
+        url: SEO_ORIGIN,
+        telephone: '+91 9315075165',
       });
-    } else {
-      removeJsonLd('product');
-    }
 
-    if (route.kind === 'faq') {
-      upsertJsonLd('faq', {
+      upsertJsonLd('website', {
         '@context': 'https://schema.org',
-        '@type': 'FAQPage',
-        mainEntity: [
-          {
-            '@type': 'Question',
-            name: 'How do I choose a meal plan?',
-            acceptedAnswer: { '@type': 'Answer', text: 'Review the available meal options and use the existing Subscribe Now flow on Bring My Bite to choose your plan.' },
-          },
-          {
-            '@type': 'Question',
-            name: 'Can I order a meal without a monthly subscription?',
-            acceptedAnswer: { '@type': 'Answer', text: 'Yes. Bring My Bite provides an Instant Thali flow for one-time orders.' },
-          },
-          {
-            '@type': 'Question',
-            name: 'Where can I get help with an order?',
-            acceptedAnswer: { '@type': 'Answer', text: 'Use the existing customer support and WhatsApp contact options on Bring My Bite.' },
-          },
-        ],
+        '@type': 'WebSite',
+        name: 'Bring My Bite',
+        url: SEO_ORIGIN,
+        description: route.description,
       });
-    } else {
-      removeJsonLd('faq');
-    }
+
+      if (route.kind === 'product') {
+        upsertJsonLd('product', {
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: route.heading,
+          description: route.intro,
+          brand: { '@type': 'Brand', name: 'Bring My Bite' },
+          url: canonical,
+        });
+      } else {
+        removeJsonLd('product');
+      }
+
+      if (route.kind === 'faq') {
+        upsertJsonLd('faq', {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: [
+            {
+              '@type': 'Question',
+              name: 'How do I choose a meal plan?',
+              acceptedAnswer: { '@type': 'Answer', text: 'Review the available meal options and use the existing Subscribe Now flow on Bring My Bite to choose your plan.' },
+            },
+            {
+              '@type': 'Question',
+              name: 'Can I order a meal without a monthly subscription?',
+              acceptedAnswer: { '@type': 'Answer', text: 'Yes. Bring My Bite provides an Instant Thali flow for one-time orders.' },
+            },
+            {
+              '@type': 'Question',
+              name: 'Where can I get help with an order?',
+              acceptedAnswer: { '@type': 'Answer', text: 'Use the existing customer support and WhatsApp contact options on Bring My Bite.' },
+            },
+          ],
+        });
+      } else {
+        removeJsonLd('faq');
+      }
+    };
+
+    applySeo();
+    window.addEventListener('popstate', applySeo);
+    window.addEventListener('hashchange', applySeo);
+    return () => {
+      window.removeEventListener('popstate', applySeo);
+      window.removeEventListener('hashchange', applySeo);
+    };
   }, []);
 
   return null;
