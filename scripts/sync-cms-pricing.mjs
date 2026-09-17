@@ -21,31 +21,15 @@ function normalizeFile(file) {
   const original = source;
   const rel = path.relative(process.cwd(), file).replaceAll('\\', '/');
 
+  // Only normalize values that are unambiguously legacy. Do not perform
+  // chained generic ₹100 replacements because ₹100 is the current Veg price.
   source = source.replaceAll('vegMonthly: 3500', 'vegMonthly: 3700');
   source = source.replaceAll('vegThaliInstant: 80', 'vegThaliInstant: 100');
   source = source.replaceAll('eggThaliInstant: 100', 'eggThaliInstant: 120');
   source = source.replaceAll('nonVegThaliInstant: 110', 'nonVegThaliInstant: 150');
   source = source.replaceAll('₹3500', '₹3700');
   source = source.replaceAll('₹3,500', '₹3,700');
-
-  if (rel.endsWith('cmsDefaults.ts')) {
-    source = source.replaceAll("thali_rate: '₹100 Instant Single Thali'", "thali_rate: '₹120 Instant Single Thali'");
-    source = source.replaceAll("thali_rate: '₹110 Instant Single Thali'", "thali_rate: '₹150 Instant Single Thali'");
-    source = source.replaceAll("thali_rate: '₹80 Instant Single Thali'", "thali_rate: '₹100 Instant Single Thali'");
-    source = source.replaceAll("highlight_price: 'From ₹80'", "highlight_price: 'From ₹100'");
-    source = source.replaceAll("thali_rate: 'Veg: ₹80 | Egg: ₹100 | Non-Veg: ₹110'", "thali_rate: 'Veg: ₹100 | Egg: ₹120 | Non-Veg: ₹150'");
-    source = source.replaceAll('Veg Thali (₹80)', 'Veg Thali (₹100)');
-    source = source.replaceAll('Egg Thali (₹100)', 'Egg Thali (₹120)');
-    source = source.replaceAll('Non-Veg Thali (₹110)', 'Non-Veg Thali (₹150)');
-  }
-
-  if (rel.endsWith('MobileAppView.tsx')) {
-    source = source.replaceAll('₹110', '₹150');
-    source = source.replaceAll('₹100', '₹120');
-    source = source.replaceAll('₹80', '₹100');
-    source = source.replaceAll('₹3,500', '₹3,700');
-    source = source.replaceAll('5CP Tray', 'Thali');
-  }
+  source = source.replaceAll('₹80', '₹100');
 
   if (source !== original) {
     fs.writeFileSync(file, source);
