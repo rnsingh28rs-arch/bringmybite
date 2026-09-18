@@ -12,10 +12,18 @@ export type SeoRoute = {
 export const PUBLIC_SEO_ROUTES: SeoRoute[] = [
   {
     path: '/',
-    title: 'Bring My Bite | Homely Tiffin Service by Shree Foods',
-    description: 'Homely tiffin service with monthly meal subscriptions and one-time thali orders for students and working professionals.',
-    heading: 'Homely Tiffin Service & Meal Subscriptions',
-    intro: 'Fresh, homely meals made for everyday routines, with monthly plans and convenient one-time thali ordering.',
+    title: 'Tiffin Service in Greater Noida | Bring My Bite',
+    description: 'Bring My Bite offers fresh home-style tiffin service in Greater Noida with monthly lunch and dinner subscriptions and one-time thali orders.',
+    heading: 'Tiffin Service in Greater Noida',
+    intro: 'Fresh home-style meals for students and working professionals in Greater Noida, with monthly lunch, dinner and lunch-plus-dinner plans plus one-time thali ordering.',
+    kind: 'home',
+  },
+  {
+    path: '/tiffin-service-greater-noida',
+    title: 'Tiffin Service in Greater Noida | Home Food Delivery | Bring My Bite',
+    description: 'Looking for a tiffin service in Greater Noida? Bring My Bite provides fresh home-style meals, monthly lunch and dinner subscriptions, and one-time thali orders.',
+    heading: 'Tiffin Service in Greater Noida',
+    intro: 'Bring My Bite is a home-style tiffin and meal subscription service serving Greater Noida. Choose Veg, Egg or Non-Veg options where available and check delivery availability before ordering.',
     kind: 'home',
   },
   {
