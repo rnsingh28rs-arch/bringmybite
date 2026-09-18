@@ -43,6 +43,7 @@ function removeJsonLd(id: string) {
 
 function clearRouteJsonLd() {
   removeJsonLd('organization');
+  removeJsonLd('local-business');
   removeJsonLd('website');
   removeJsonLd('product');
   removeJsonLd('faq');
@@ -84,6 +85,19 @@ export function SeoManager() {
         alternateName: 'Shree Foods',
         url: SEO_ORIGIN,
         telephone: '+91 9315075165',
+        areaServed: { '@type': 'City', name: 'Greater Noida' },
+      });
+
+      upsertJsonLd('local-business', {
+        '@context': 'https://schema.org',
+        '@type': 'FoodEstablishment',
+        name: 'Bring My Bite',
+        url: SEO_ORIGIN,
+        telephone: '+91 9315075165',
+        description: route.description,
+        servesCuisine: ['North Indian', 'Indian', 'Home-style meals'],
+        areaServed: { '@type': 'City', name: 'Greater Noida', addressCountry: 'IN' },
+        priceRange: '₹₹',
       });
 
       upsertJsonLd('website', {
