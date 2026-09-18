@@ -6,6 +6,7 @@ const dist = path.join(root, 'dist');
 const template = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
 
 const pages = [
+  ['tiffin-service-greater-noida', 'Tiffin Service in Greater Noida | Home Food Delivery | Bring My Bite', 'Looking for a tiffin service in Greater Noida? Bring My Bite provides fresh home-style meals, monthly lunch and dinner subscriptions, and one-time thali orders.'],
   ['monthly-meal-subscription', 'Monthly Meal Subscription | Bring My Bite', 'Explore monthly meal subscriptions from Bring My Bite for convenient everyday tiffin meals and a simpler food routine.'],
   ['veg-meal-subscription', 'Veg Meal Subscription | Bring My Bite', 'Discover the Veg Classic monthly meal option from Bring My Bite and make everyday homely meals easier to plan.'],
   ['egg-meal-subscription', 'Egg Meal Subscription | Bring My Bite', 'Discover the Egg Delight monthly meal option from Bring My Bite for convenient everyday tiffin meals.'],
