@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, CheckCircle2, MessageCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, MessageCircle, MapPin } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getSeoRoute, PUBLIC_SEO_ROUTES } from '../../seo/seoConfig';
 
@@ -8,7 +8,7 @@ type PageProps = { path: string };
 const sections: Record<string, { title: string; bullets: string[] }> = {
   '/monthly-meal-subscription': {
     title: 'Why use a monthly meal plan?',
-    bullets: ['Plan your everyday meals in advance.', 'Choose the meal category that fits your routine.', 'Use the same Bring My Bite experience for menu information and customer support.', 'Check the live pricing and subscription flow before confirming your plan.'],
+    bullets: ['Plan your everyday meals in advance.', 'Choose the meal category that fits your routine.', 'Use the same Bring My Bite experience for menu information and customer support.', 'Check the live pricing and delivery availability before confirming your plan.'],
   },
   '/veg-meal-subscription': {
     title: 'Veg Classic for an everyday routine',
@@ -35,26 +35,40 @@ const sections: Record<string, { title: string; bullets: string[] }> = {
     bullets: ['Choose between a monthly subscription and a one-time Instant Thali.', 'Review the current menu and live pricing.', 'Complete the existing registration or order flow.', 'Use customer support if you need help with your order.'],
   },
   '/delivery-areas': {
-    title: 'Convenient delivery to college and office gates',
-    bullets: ['The service is designed around delivery to college and office gates.', 'Availability can depend on the service area and operational coverage.', 'Check availability before placing an order.', 'Use the contact options if you need confirmation for your location.'],
+    title: 'Greater Noida West first, nearby Noida next',
+    bullets: ['Current SEO and kitchen focus is Greater Noida West.', 'Gaur City, Bisrakh and the Techzone IV/Sector belt are priority local areas.', 'Nearby Noida demand such as Sector 62 and Sector 63 can be served where operationally feasible.', 'Always confirm exact address availability before placing an order.'],
   },
   '/contact': {
-    title: 'Questions about meals or orders?',
-    bullets: ['Ask about monthly meal subscriptions.', 'Get help with an Instant Thali order.', 'Ask about the weekly menu and current options.', 'Use WhatsApp support for customer assistance.'],
+    title: 'Questions about meals or delivery?',
+    bullets: ['Ask about monthly meal subscriptions.', 'Get help with an Instant Thali order.', 'Ask about the weekly menu and current options.', 'Confirm delivery coverage for your society or office address.'],
   },
 };
+
+const locationBullets = (locationName: string) => [
+  `Home-style lunch and dinner options for customers around ${locationName}.`,
+  'Monthly Veg, Egg and Non-Veg meal options are available through the existing subscription flow.',
+  'One-time Instant Thali ordering is available where delivery coverage supports the address.',
+  'Confirm your exact society, tower, office or residential address before ordering.',
+];
 
 export const PublicSeoPage: React.FC<PageProps> = ({ path }) => {
   const { setIsRegistrationOpen, setIsInstantOrderOpen, setIsWeeklyMenuOpen } = useApp();
   const route = getSeoRoute(path);
   if (!route || route.path === '/') return null;
-  const section = sections[route.path] || sections['/how-it-works'];
-  const related = PUBLIC_SEO_ROUTES.filter((item) => item.path !== '/' && item.path !== route.path).slice(0, 4);
+
+  const isLocation = route.kind === 'location';
+  const section = isLocation
+    ? { title: `Bring My Bite around ${route.locationName}`, bullets: locationBullets(route.locationName || 'your area') }
+    : sections[route.path] || sections['/how-it-works'];
+
+  const related = isLocation
+    ? PUBLIC_SEO_ROUTES.filter((item) => item.kind === 'location' && item.path !== route.path).slice(0, 6)
+    : PUBLIC_SEO_ROUTES.filter((item) => item.path !== '/' && item.path !== route.path).slice(0, 4);
 
   return <main className="flex-1 bg-[#FAF7F2] text-[#1A261E]">
     <section className="max-w-5xl mx-auto px-5 sm:px-8 py-14 sm:py-20">
       <div className="max-w-3xl">
-        <p className="text-xs font-extrabold tracking-[0.18em] uppercase text-[#8C5E13] mb-4">Bring My Bite · Shree Foods</p>
+        <div className="flex items-center gap-2 text-xs font-extrabold tracking-[0.18em] uppercase text-[#8C5E13] mb-4"><MapPin className="w-4 h-4" /> Bring My Bite · {route.locationType || 'Greater Noida West'}</div>
         <h1 className="font-serif text-4xl sm:text-6xl leading-tight font-bold text-[#124E33]">{route.heading}</h1>
         <p className="mt-6 text-lg sm:text-xl leading-8 text-[#465249]">{route.intro}</p>
         <div className="mt-8 flex flex-wrap gap-3">
@@ -74,16 +88,24 @@ export const PublicSeoPage: React.FC<PageProps> = ({ path }) => {
       </div>
     </section>
 
+    {isLocation && <section className="max-w-5xl mx-auto px-5 sm:px-8 py-12">
+      <div className="rounded-3xl bg-[#F1EBDD] p-6 sm:p-8">
+        <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#124E33]">Who is this for?</h2>
+        <p className="mt-4 text-sm sm:text-base leading-7 text-[#465249]">Bring My Bite is designed for people living in apartments and societies, students and PG residents, working professionals, and office teams who want a dependable home-style lunch or dinner routine.</p>
+        <p className="mt-3 text-sm sm:text-base leading-7 text-[#465249]">Our kitchen and delivery planning is centred on Greater Noida West. Nearby Noida locations are covered only where the operational route supports the address.</p>
+      </div>
+    </section>}
+
     <section className="max-w-5xl mx-auto px-5 sm:px-8 py-12 sm:py-16">
-      <h2 className="font-serif text-3xl font-bold text-[#124E33]">Explore Bring My Bite</h2>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-7">
+      <h2 className="font-serif text-3xl font-bold text-[#124E33]">{isLocation ? 'Nearby Bring My Bite service areas' : 'Explore Bring My Bite'}</h2>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-7">
         {related.map((item) => <a key={item.path} href={item.path} className="rounded-2xl border border-[#E8E1D5] bg-white p-5 hover:shadow-md transition-shadow"><p className="font-bold text-[#124E33]">{item.heading}</p><p className="mt-2 text-xs leading-5 text-[#667067]">{item.description}</p><span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#8C5E13]">Learn more <ArrowRight className="w-3.5 h-3.5" /></span></a>)}
       </div>
     </section>
 
     <section className="bg-[#124E33] text-white">
       <div className="max-w-5xl mx-auto px-5 sm:px-8 py-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-        <div><h2 className="font-serif text-2xl font-bold">Need help before ordering?</h2><p className="mt-1 text-sm text-white/80">Bring My Bite customer support can help with meal and order questions.</p></div>
+        <div><h2 className="font-serif text-2xl font-bold">Need help before ordering?</h2><p className="mt-1 text-sm text-white/80">Confirm meal options and delivery coverage for your exact Greater Noida West or nearby Noida address.</p></div>
         <a href="https://wa.me/919315075165" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#124E33]"><MessageCircle className="w-4 h-4" /> WhatsApp Support</a>
       </div>
     </section>
