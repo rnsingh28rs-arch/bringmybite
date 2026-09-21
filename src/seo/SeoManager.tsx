@@ -47,7 +47,23 @@ function clearRouteJsonLd() {
   removeJsonLd('website');
   removeJsonLd('product');
   removeJsonLd('faq');
+  removeJsonLd('breadcrumb');
 }
+
+const westAreas = [
+  'Greater Noida West',
+  'Gaur City 1',
+  'Gaur City 2',
+  'Bisrakh',
+  'Techzone IV',
+  'Sector 1, Greater Noida West',
+  'Sector 3, Greater Noida West',
+  'Sector 4, Greater Noida West',
+  'Sector 12, Greater Noida West',
+  'Sector 16C, Greater Noida West',
+];
+
+const nearbyNoidaAreas = ['Sector 62, Noida', 'Sector 63, Noida'];
 
 export function SeoManager() {
   useEffect(() => {
@@ -78,6 +94,11 @@ export function SeoManager() {
       upsertMeta('name', 'twitter:description', route.description);
       upsertLink('canonical', canonical);
 
+      const areaServed = [...westAreas, ...nearbyNoidaAreas].map((name) => ({
+        '@type': 'Place',
+        name,
+      }));
+
       upsertJsonLd('organization', {
         '@context': 'https://schema.org',
         '@type': 'Organization',
@@ -85,7 +106,7 @@ export function SeoManager() {
         alternateName: 'Shree Foods',
         url: SEO_ORIGIN,
         telephone: '+91 9315075165',
-        areaServed: { '@type': 'City', name: 'Greater Noida' },
+        areaServed,
       });
 
       upsertJsonLd('local-business', {
@@ -96,7 +117,7 @@ export function SeoManager() {
         telephone: '+91 9315075165',
         description: route.description,
         servesCuisine: ['North Indian', 'Indian', 'Home-style meals'],
-        areaServed: { '@type': 'City', name: 'Greater Noida', addressCountry: 'IN' },
+        areaServed,
         priceRange: '₹₹',
       });
 
@@ -106,6 +127,15 @@ export function SeoManager() {
         name: 'Bring My Bite',
         url: SEO_ORIGIN,
         description: route.description,
+      });
+
+      upsertJsonLd('breadcrumb', {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_ORIGIN },
+          ...(route.path !== '/' ? [{ '@type': 'ListItem', position: 2, name: route.heading, item: canonical }] : []),
+        ],
       });
 
       if (route.kind === 'product') {
@@ -134,12 +164,12 @@ export function SeoManager() {
             {
               '@type': 'Question',
               name: 'Can I order a meal without a monthly subscription?',
-              acceptedAnswer: { '@type': 'Answer', text: 'Yes. Bring My Bite provides an Instant Thali flow for one-time orders.' },
+              acceptedAnswer: { '@type': 'Answer', text: 'Yes. Bring My Bite provides an Instant Thali flow for one-time orders where delivery coverage supports the address.' },
             },
             {
               '@type': 'Question',
-              name: 'Where can I get help with an order?',
-              acceptedAnswer: { '@type': 'Answer', text: 'Use the existing customer support and WhatsApp contact options on Bring My Bite.' },
+              name: 'Where does Bring My Bite currently focus delivery?',
+              acceptedAnswer: { '@type': 'Answer', text: 'The current kitchen and SEO focus is Greater Noida West, with nearby Noida locations considered subject to operational delivery coverage.' },
             },
           ],
         });
