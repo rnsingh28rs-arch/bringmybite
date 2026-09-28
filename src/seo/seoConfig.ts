@@ -23,16 +23,6 @@ export const PUBLIC_SEO_ROUTES: SeoRoute[] = [
     locationType: 'Greater Noida West',
   },
   {
-    path: '/tiffin-service-greater-noida',
-    title: 'Tiffin Service in Greater Noida West | Bring My Bite',
-    description: 'Looking for tiffin service in Greater Noida? Bring My Bite is focused on Greater Noida West, including Gaur City, Bisrakh, Techzone IV and nearby residential areas.',
-    heading: 'Tiffin Service for Greater Noida West',
-    intro: 'Bring My Bite is shifting its service-area focus to Greater Noida West, with the kitchen planned around Bisrakh and delivery coverage centred on Gaur City, Techzone IV and nearby societies.',
-    kind: 'location',
-    locationName: 'Greater Noida West',
-    locationType: 'Greater Noida West',
-  },
-  {
     path: '/tiffin-service-greater-noida-west',
     title: 'Tiffin Service in Greater Noida West | Home Food Delivery | Bring My Bite',
     description: 'Fresh home-style tiffin, monthly meal subscriptions and one-time thalis in Greater Noida West, including Gaur City, Bisrakh, Techzone IV, Sector 1, Sector 3 and nearby societies.',
