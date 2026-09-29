@@ -67,7 +67,7 @@ for (const [slug, title, description, heading, intro] of pages) {
   fs.writeFileSync(path.join(outputDir, 'index.html'), html);
 }
 
-const staffRoutes = ['admin', 'manager', 'chef', 'd-admin', 'staff'];
+const staffRoutes = ['admin', 'manager', 'chef', 'd-admin', 'dadmin', 'staff'];
 for (const slug of staffRoutes) {
   let html = template;
   html = replaceTag(html, /<meta name="robots" content="[^"]*"\s*\/>/i, '<meta name="robots" content="noindex,nofollow,noarchive" />');
