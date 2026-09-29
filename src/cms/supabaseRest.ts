@@ -1,3 +1,5 @@
+import { getStaffAccessTokenFromSession } from '../utils/staffSession.mjs';
+
 export interface SupabaseRestConfig { url:string; anonKey:string; }
 const config:SupabaseRestConfig={
   url:(import.meta.env.VITE_SUPABASE_URL||import.meta.env.NEXT_PUBLIC_SUPABASE_URL||'https://tknmdgeikmlsprqppukf.supabase.co').replace(/\/$/,''),
@@ -5,7 +7,7 @@ const config:SupabaseRestConfig={
 };
 export const isSupabaseConfigured=Boolean(config.url&&config.anonKey);
 const STAFF_SESSION_KEY='bmb_staff_session_v1';
-function getStaffAccessToken(){try{const raw=localStorage.getItem(STAFF_SESSION_KEY);if(!raw)return '';const session=JSON.parse(raw);return typeof session?.access_token==='string'?session.access_token:'';}catch{return '';}}
+function getStaffAccessToken(){try{const raw=localStorage.getItem(STAFF_SESSION_KEY);if(!raw)return '';return getStaffAccessTokenFromSession(JSON.parse(raw));}catch{return '';}}
 const jsonHeaders=()=>({'Content-Type':'application/json',apikey:config.anonKey});
 const authHeaders=()=>({...jsonHeaders(),Authorization:`Bearer ${getStaffAccessToken()||config.anonKey}`});
 export const getSupabaseUrl=()=>config.url;
