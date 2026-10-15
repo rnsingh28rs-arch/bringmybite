@@ -21,7 +21,7 @@ const authHeaders=()=>({...jsonHeaders(),Authorization:`Bearer ${getStaffAccessT
 export const getSupabaseUrl=()=>config.url;
 export const getSupabasePublishableKey=()=>config.anonKey;
 export const STAFF_SESSION_STORAGE_KEY=STAFF_SESSION_KEY;
-export function logoutStaffSession(): void {
+export async function logoutStaffSession(): Promise<void> {
   let accessToken = '';
   try {
     const saved = JSON.parse(localStorage.getItem(STAFF_SESSION_KEY) || 'null');
@@ -29,13 +29,22 @@ export function logoutStaffSession(): void {
   } catch {}
   localStorage.removeItem(STAFF_SESSION_KEY);
   window.dispatchEvent(new Event('bmb-staff-session-change'));
-  if (accessToken) {
-    void fetch(`${config.url}/auth/v1/logout`, {
+  if (!accessToken) return;
+  try {
+    await fetch(`${config.url}/rest/v1/rpc/bmb_revoke_staff_session`, {
+      method: 'POST',
+      headers: { ...jsonHeaders(), Authorization: `Bearer ${accessToken}` },
+      body: '{}',
+      keepalive: true
+    });
+  } catch {}
+  try {
+    await fetch(`${config.url}/auth/v1/logout?scope=global`, {
       method: 'POST',
       headers: { apikey: config.anonKey, Authorization: `Bearer ${accessToken}` },
       keepalive: true
-    }).catch(() => undefined);
-  }
+    });
+  } catch {}
 }
 async function readResponse(response:Response){const data=await response.json().catch(()=>null);if(!response.ok){const message=data&&typeof data==='object'&&typeof (data as any).message==='string'?(data as any).message:data&&typeof data==='object'&&typeof (data as any).error==='string'?(data as any).error:`Supabase request failed (${response.status})`;const detail=data&&typeof data==='object'&&typeof (data as any).details==='string'?` — ${(data as any).details}`:'';throw new Error(`${message}${detail}`);}return data;}
 function toDatabasePayload(table:string,body:any):any{if(table!=='bmb_admin_users') return body;const normalize=(row:any)=>({user_id:row.user_id,username:row.username,email:row.email,role_id:row.role_id,active:row.active});return Array.isArray(body)?body.map(normalize):normalize(body);}
