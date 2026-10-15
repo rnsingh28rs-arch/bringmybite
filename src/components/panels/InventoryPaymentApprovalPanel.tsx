@@ -11,7 +11,7 @@ interface PurchaseRequest { id:string; totalAmount:number; status:PaymentStatus;
 interface PurchaseLine { id:number; requestId:string; indentId:string; itemName:string; quantity:number; unit:string; purchasePrice:number; lineTotal:number; }
 
 const money=(value:number)=>`₹${Number(value||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-const normalizedName=(value:string)=>String(value||'').normalize('NFKC').trim().replace(/\\s+/g,' ').toLowerCase();
+const normalizedName=(value:string)=>String(value||'').normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
 const findInventoryMatch=(items:any[],name:string,unit:string)=>{
   const named=items.filter(item=>normalizedName(item.name)===normalizedName(name));
   const matches=named.filter(item=>String(item.unit||'').trim().toLowerCase()===String(unit||'').trim().toLowerCase());
