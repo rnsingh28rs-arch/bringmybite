@@ -17,6 +17,11 @@ SET search_path TO 'public'
 AS $function$
   SELECT auth.uid() IS NOT NULL
     AND NULLIF(auth.jwt()->>'session_id', '') IS NOT NULL
+    AND EXISTS (
+      SELECT 1 FROM auth.sessions s
+      WHERE s.id::text = auth.jwt()->>'session_id'
+        AND s.user_id = auth.uid()
+    )
     AND NOT EXISTS (
       SELECT 1 FROM public.bmb_revoked_staff_sessions r
       WHERE r.session_id = auth.jwt()->>'session_id'
@@ -98,8 +103,7 @@ AS $function$
         ELSE false
       END
   );
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.bmb_is_admin()
  RETURNS boolean
@@ -112,8 +116,7 @@ AS $function$
     WHERE public.bmb_staff_session_is_valid()
       AND a.user_id = auth.uid()::text AND a.active = true AND a.role_id = 'admin'
   );
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.bmb_is_dadmin()
  RETURNS boolean
@@ -128,8 +131,7 @@ AS $function$
       AND a.active = true
       AND a.role_id = 'ceo-director'
   );
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.bmb_is_inventory_finance_staff()
  RETURNS boolean
@@ -144,8 +146,7 @@ AS $function$
       AND a.active = true
       AND a.role_id IN ('manager','admin','ceo-director')
   );
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.bmb_get_staff_account()
  RETURNS TABLE(user_id uuid, username text, email text, role_id text, active boolean)
@@ -159,8 +160,7 @@ AS $function$
     AND a.user_id = auth.uid()::text
     AND a.active = true
   LIMIT 1;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.bmb_approve_inventory_purchase_payment(p_request_id text)
  RETURNS TABLE(request_id text, request_status text, approved_items integer)
@@ -223,8 +223,7 @@ BEGIN
 
   RETURN QUERY SELECT p_request_id,'Approved'::text,v_updated_count;
 END;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.bmb_reject_inventory_purchase_payment(p_request_id text, p_rejection_note text DEFAULT 'Rejected by Admin'::text)
  RETURNS TABLE(request_id text, request_status text, rejected_items integer)
@@ -308,8 +307,7 @@ BEGIN
 
   RETURN QUERY SELECT p_request_id, 'Rejected'::text, v_updated_count;
 END;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.bmb_submit_inventory_purchase_request(p_request_id text, p_indent_ids text[])
  RETURNS TABLE(request_id text, total_amount numeric, line_count integer)
@@ -417,8 +415,7 @@ BEGIN
 
   RETURN QUERY SELECT p_request_id,round(v_total,2),v_count;
 END;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.bmb_guard_chef_indent_updates()
  RETURNS trigger
@@ -512,7 +509,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$function$
+$function$;
 
 DROP POLICY IF EXISTS bmb_staff_read_own_admin_user ON public.bmb_admin_users;
 CREATE POLICY bmb_staff_read_own_admin_user ON public.bmb_admin_users
