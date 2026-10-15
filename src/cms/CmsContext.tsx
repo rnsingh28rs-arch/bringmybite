@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DayMenuSchedule, PackageType } from '../types';
 import { DEFAULT_BANNERS, DEFAULT_MENUS, DEFAULT_PANELS, DEFAULT_PAYMENT, DEFAULT_PRICING, DEFAULT_REGISTRATION_FIELDS, DEFAULT_ROLES, DEFAULT_SITE_SETTINGS, PricingConfig, BannerConfig, RegistrationFieldConfig } from './cmsDefaults';
-import { hasValidStaffSession, isSupabaseConfigured, supabaseDelete, supabaseSelect, supabaseUpsert } from './supabaseRest';
+import { getStaffSessionRole, hasValidStaffSession, isSupabaseConfigured, supabaseDelete, supabaseSelect, supabaseUpsert } from './supabaseRest';
 import { subscribeToSupabaseChanges } from './supabaseRealtime';
 
 export interface PanelConfig { id: string; name: string; sort_order: number; active: boolean; }
@@ -37,7 +37,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!isSupabaseConfigured) { const cached = readLocalCms(); if (cached) { setSiteSettings({ ...DEFAULT_SITE_SETTINGS, ...(cached.siteSettings || {}) }); setPricing({ ...DEFAULT_PRICING, ...(cached.pricing || {}) }); setBanners(cached.banners?.length ? cached.banners : DEFAULT_BANNERS); setPayment(cached.payment || DEFAULT_PAYMENT); setRegistrationFields(cached.registrationFields?.length ? cached.registrationFields : DEFAULT_REGISTRATION_FIELDS); setMenus(cached.menus || DEFAULT_MENUS); setPanels(cached.panels?.length ? cached.panels : DEFAULT_PANELS); setRoles(cached.roles?.length ? cached.roles : DEFAULT_ROLES); setPermissions(cached.permissions || []); setAdminUsers(cached.adminUsers || []); } setLoading(false); return; }
     try {
       const [settingsRows, pricingRows, bannerRows, paymentRows, fieldRows, menuRows] = await Promise.all([
-        supabaseSelect<{ key: string; value: string }>('bmb_settings', 'select=key,value'), supabaseSelect<{ key: string; value: number }>('bmb_pricing', 'select=key,value'), supabaseSelect<BannerConfig>('bmb_banners', 'select=*&order=sort_order.asc'), supabaseSelect<any>('bmb_payment_settings', 'select=*&limit=1'),
+        supabaseSelect<{ key: string; value: string }>('bmb_settings', 'select=key,value'), supabaseSelect<{ key: string; value: number }>('bmb_pricing', 'select=key,value'), supabaseSelect<BannerConfig>('bmb_banners', 'select=*&order=sort_order.asc'), getStaffSessionRole() === 'd_admin' ? supabaseSelect<any>('bmb_payment_settings', 'select=*&limit=1') : supabaseSelect<any>('bmb_public_payment_settings', 'select=*&limit=1'),
         supabaseSelect<RegistrationFieldConfig>('bmb_registration_fields', 'select=*&order=sort_order.asc'), supabaseSelect<{ package_type: PackageType; menu: DayMenuSchedule[] }>('bmb_menus', 'select=*')
       ]);
       // Internal authorization metadata is loaded only after a staff session exists.
