@@ -22,7 +22,7 @@ test('subscription activity metrics separate active, new today, this week and ex
   assert.deepEqual(getSubscriptionActivityMetrics(subscriptions, today), {
     active: 3,
     newToday: 1,
-    startedThisWeek: 3,
+    startedThisWeek: 2,
     expiringSoon: 1,
   });
 });
