@@ -11,7 +11,7 @@ import { getSubscriptionPlan, getSubscriptionPlanOptions } from '../../utils/sub
 
 export const RegistrationModal: React.FC = () => {
   const { registrationFields } = useCms();
-  const { isRegistrationOpen, setIsRegistrationOpen, selectedPackageForRegistration, addSubscription } = useApp();
+  const { isRegistrationOpen, setIsRegistrationOpen, selectedPackageForRegistration, addSubscription, pricing } = useApp();
   const [fullName, setFullName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -48,7 +48,7 @@ export const RegistrationModal: React.FC = () => {
   if (!isRegistrationOpen) return null;
 
   const selectedPlan = getSubscriptionPlan(mealPreference, packageType);
-  const baseMonthlyPrice = selectedPlan.price;
+  const baseMonthlyPrice = packageType === 'VEG CLASSIC' ? pricing.vegMonthly : packageType === 'EGG DELIGHT' ? pricing.eggMonthly : pricing.nonVegMonthly;
   const durationMultiplier = duration === '1 Month' ? 1 : duration === '3 Months' ? 3 : 6;
   const discountFactor = duration === '3 Months' ? 0.95 : duration === '6 Months' ? 0.90 : 1;
   const calculatedTotal = Math.round(baseMonthlyPrice * durationMultiplier * discountFactor);
