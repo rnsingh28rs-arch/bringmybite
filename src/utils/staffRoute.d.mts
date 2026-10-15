@@ -1,2 +1,2 @@
 export type StaffRole = 'd_admin' | 'admin' | 'manager' | 'chef';
-export function resolveStaffRoute(pathname: string, hash: string): { role: StaffRole; pin: string } | null;
+export function resolveStaffRoute(pathname: string): { role: StaffRole } | null;
