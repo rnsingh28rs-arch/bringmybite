@@ -21,3 +21,9 @@ test('CMS realtime subscribes only to tables in the Supabase Realtime publicatio
   assert.match(cms, /const tables=\['bmb_settings','bmb_pricing','bmb_banners','bmb_menus','bmb_registration_fields'\]/);
   assert.doesNotMatch(cms, /const tables=\[[^\]]*'bmb_admin_users'/);
 });
+
+test('Realtime wire format matches the V1 map serializer reported by production logs', () => {
+  assert.match(realtime, /vsn=1\\.0\\.0/);
+  assert.match(realtime, /current\\.send\\(JSON\\.stringify\\(\\{[\\s\\S]*?event: 'phx_join'/);
+  assert.doesNotMatch(realtime, /JSON\\.stringify\\(\\[\\s*joinRef/);
+});
