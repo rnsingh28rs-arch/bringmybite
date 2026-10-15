@@ -54,7 +54,7 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
     if (closed) return;
     cleanupSocket();
     if (options.requireStaffAuth && !hasValidStaffSession()) {
-      scheduleReconnect();
+      if (reconnectTimer !== undefined) { window.clearTimeout(reconnectTimer); reconnectTimer = undefined; }
       return;
     }
     let current: WebSocket;
@@ -130,8 +130,20 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
     };
   };
 
+  const handleStaffSessionChange = () => {
+    if (closed || !options.requireStaffAuth) return;
+    if (!hasValidStaffSession()) {
+      if (reconnectTimer !== undefined) { window.clearTimeout(reconnectTimer); reconnectTimer = undefined; }
+      cleanupSocket();
+      return;
+    }
+    connect();
+  };
+  if (options.requireStaffAuth) window.addEventListener('bmb-staff-session-change', handleStaffSessionChange);
+
   connect();
   return () => {
+    if (options.requireStaffAuth) window.removeEventListener('bmb-staff-session-change', handleStaffSessionChange);
     closed = true;
     if (reconnectTimer !== undefined) {
       window.clearTimeout(reconnectTimer);

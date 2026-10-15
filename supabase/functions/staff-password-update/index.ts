@@ -52,6 +52,12 @@ Deno.serve(async (req: Request) => {
     targetId = target.user_id;
   }
 
+  const { error: revokeError } = await admin.rpc('bmb_revoke_staff_sessions_for_user', { p_user_id: targetId });
+  if (revokeError) {
+    console.error('staff-password-update session revocation failed', JSON.stringify({ code: (revokeError as any).code || 'unknown' }));
+    return json({ error: 'Existing sessions could not be safely revoked, so the password was not changed.' }, 500);
+  }
+
   const { error: updateError } = await admin.auth.admin.updateUserById(targetId, { password: newPassword });
   if (updateError) {
     console.error('staff-password-update failed', JSON.stringify({ code: (updateError as any).code || 'unknown' }));

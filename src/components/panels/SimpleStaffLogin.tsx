@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Eye, EyeOff, LogIn, ShieldCheck } from 'lucide-react';
-import { getSupabasePublishableKey, getSupabaseUrl, STAFF_SESSION_STORAGE_KEY } from '../../cms/supabaseRest';
+import { getSupabasePublishableKey, getSupabaseUrl, logoutStaffSession, STAFF_SESSION_STORAGE_KEY } from '../../cms/supabaseRest';
 import type { ActiveRole } from '../../types';
 import { getStaffDatabaseRole, isStaffSessionShapeValid } from '../../utils/staffSession.mjs';
 
@@ -17,13 +17,19 @@ export const SimpleStaffLogin: React.FC<Props> = ({ role, children }) => {
   useEffect(() => {
     if (!session) { setSessionVerified(false); setSessionVerificationError(''); return; }
     let cancelled = false;
+    let verifying = false;
     setSessionVerified(false);
     setSessionVerificationError('');
     const rejectSession = (message: string) => {
       localStorage.removeItem(STAFF_SESSION_STORAGE_KEY);
+      window.dispatchEvent(new Event('bmb-staff-session-change'));
+      void logoutStaffSession();
       if (!cancelled) { setSession(null); setError(message); }
     };
-    const verifySession = async () => {
+    const verifySession = async (initial = false) => {
+      if (cancelled || verifying) return;
+      verifying = true;
+      if (initial) { setSessionVerified(false); setSessionVerificationError(''); }
       try {
         const authResponse = await fetch(`${getSupabaseUrl()}/auth/v1/user`, {
           headers: { apikey: getSupabasePublishableKey(), Authorization: `Bearer ${session.access_token}` },
@@ -55,13 +61,27 @@ export const SimpleStaffLogin: React.FC<Props> = ({ role, children }) => {
           rejectSession('This account is no longer authorized for this panel. Please sign in again.');
           return;
         }
-        if (!cancelled) setSessionVerified(true);
+        if (!cancelled) { setSessionVerified(true); setSessionVerificationError(''); }
       } catch {
-        if (!cancelled) setSessionVerificationError('Could not verify your staff session. Check your connection and retry.');
+        if (!cancelled && initial) setSessionVerificationError('Could not verify your staff session. Check your connection and retry.');
+      } finally {
+        verifying = false;
       }
     };
-    void verifySession();
-    return () => { cancelled = true; };
+    void verifySession(true);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void verifySession(false);
+    }, 60_000);
+    const onFocus = () => void verifySession(false);
+    const onStorage = () => void verifySession(false);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('storage', onStorage);
+    };
   }, [session?.access_token, role, verificationRetry]);
 
   useEffect(() => {
@@ -78,7 +98,7 @@ export const SimpleStaffLogin: React.FC<Props> = ({ role, children }) => {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
           if (response.status === 400 || response.status === 401) {
-            localStorage.removeItem(STAFF_SESSION_STORAGE_KEY);
+            void logoutStaffSession();
             if (!cancelled) {
               setSession(null);
               setError('Your staff session expired. Please sign in again.');
@@ -105,7 +125,7 @@ export const SimpleStaffLogin: React.FC<Props> = ({ role, children }) => {
   }, [session?.expires_at, session?.refresh_token]);
 
   if (session && sessionVerified) return <>{children}</>;
-  if (session) return <div className="min-h-[100dvh] bg-[#FAF7F2] flex items-center justify-center p-5"><div className="w-full max-w-sm rounded-3xl border border-[#E5DAC6] bg-white p-6 text-center shadow-xl"><ShieldCheck className="mx-auto h-8 w-8 text-[#124E33]" /><h1 className="mt-3 text-lg font-black text-[#124E33]">Verifying staff session</h1><p className="mt-2 text-sm text-gray-600">{sessionVerificationError || 'Checking your current login and staff permissions…'}</p>{sessionVerificationError && <div className="mt-4 flex gap-2"><button type="button" onClick={() => setVerificationRetry(value => value + 1)} className="flex-1 rounded-xl bg-[#124E33] px-3 py-2 text-sm font-bold text-white">Retry</button><button type="button" onClick={() => { localStorage.removeItem(STAFF_SESSION_STORAGE_KEY); setSession(null); setSessionVerificationError(''); setError('Please sign in again.'); }} className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700">Sign in again</button></div>}</div></div>;
+  if (session) return <div className="min-h-[100dvh] bg-[#FAF7F2] flex items-center justify-center p-5"><div className="w-full max-w-sm rounded-3xl border border-[#E5DAC6] bg-white p-6 text-center shadow-xl"><ShieldCheck className="mx-auto h-8 w-8 text-[#124E33]" /><h1 className="mt-3 text-lg font-black text-[#124E33]">Verifying staff session</h1><p className="mt-2 text-sm text-gray-600">{sessionVerificationError || 'Checking your current login and staff permissions…'}</p>{sessionVerificationError && <div className="mt-4 flex gap-2"><button type="button" onClick={() => setVerificationRetry(value => value + 1)} className="flex-1 rounded-xl bg-[#124E33] px-3 py-2 text-sm font-bold text-white">Retry</button><button type="button" onClick={async () => { await logoutStaffSession(); setSession(null); setSessionVerificationError(''); setError('Please sign in again.'); }} className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700">Sign in again</button></div>}</div></div>;
   const submit = async (event: React.FormEvent) => { event.preventDefault(); setError(''); if (!username.trim() || !password) { setError('Enter username and password.'); return; } setBusy(true); try { const response = await fetch(`${getSupabaseUrl()}/functions/v1/staff-login`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: getSupabasePublishableKey() }, body: JSON.stringify({ role, username: username.trim().toLowerCase(), password }) }); const data = await response.json().catch(() => ({})); if (!response.ok || data.role !== role || typeof data.access_token !== 'string' || data.access_token.length < 20) throw new Error(data.error || 'Invalid username or password.'); if (typeof data.refresh_token !== 'string' || data.refresh_token.length < 20) throw new Error('The authentication service did not return a refresh token. Please contact the administrator.');
       const next: Session = { role, username: data.username, access_token: data.access_token, refresh_token: data.refresh_token, expires_at: Date.now() + Number(data.expires_in || 3600) * 1000 }; localStorage.setItem(STAFF_SESSION_STORAGE_KEY, JSON.stringify(next)); setPassword(''); setSession(next); window.location.reload(); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to sign in.'); } finally { setBusy(false); } };
   return <div className="min-h-[100dvh] bg-[#FAF7F2] flex items-center justify-center p-5"><form onSubmit={submit} className="w-full max-w-sm bg-white rounded-3xl border border-[#E5DAC6] shadow-xl p-6 space-y-5"><div className="text-center"><div className="mx-auto h-14 w-14 rounded-2xl bg-[#124E33] text-[#F2C94C] flex items-center justify-center"><ShieldCheck className="w-7 h-7" /></div><h1 className="mt-4 text-2xl font-black text-[#124E33]">{titles[role]} Login</h1><p className="mt-1 text-xs text-gray-500">Username and password only.</p></div><label className="block text-sm font-bold text-gray-700">Username<input autoFocus autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} className="mt-2 w-full rounded-xl border-2 border-gray-200 px-4 py-3 outline-none focus:border-[#124E33]" /></label><label className="block text-sm font-bold text-gray-700">Password<div className="relative mt-2"><input type={show ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 pr-12 outline-none focus:border-[#124E33]" /><button type="button" onClick={() => setShow(v => !v)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-2 top-1/2 -translate-y-1/2 p-2">{show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</button></div></label>{error && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-semibold text-rose-800">{error}</div>}<button type="submit" disabled={busy || !username.trim() || !password} className="w-full rounded-xl bg-[#124E33] py-3.5 text-white font-black flex items-center justify-center gap-2 disabled:opacity-50"><LogIn className="w-4 h-4" />{busy ? 'Signing in…' : `Enter ${titles[role]} Panel`}</button></form></div>;
