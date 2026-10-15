@@ -1,1 +1,10 @@
-{"buildCommand":"npm run build","outputDirectory":"dist","installCommand":"npm install","framework":"vite"}
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/panel-app", "destination": "/index.html" },
+    { "source": "/panel-app/:path*", "destination": "/index.html" }
+  ]
+}
