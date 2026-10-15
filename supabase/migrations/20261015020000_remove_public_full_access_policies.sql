@@ -22,6 +22,8 @@ drop policy if exists "bmb direct panel read orders" on public.bmb_orders;
 drop policy if exists "bmb direct panel update orders" on public.bmb_orders;
 drop policy if exists "bmb public create orders" on public.bmb_orders;
 drop policy if exists "bmb_orders_public_insert" on public.bmb_orders;
+drop policy if exists "bmb_orders_staff_read" on public.bmb_orders;
+drop policy if exists "bmb_orders_staff_update" on public.bmb_orders;
 
 -- Public site can read its published configuration. Writes are D-Admin-only.
 drop policy if exists "bmb_public_read_banners" on public.bmb_banners;
