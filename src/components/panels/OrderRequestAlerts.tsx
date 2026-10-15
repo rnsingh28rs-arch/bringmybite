@@ -82,7 +82,7 @@ export const OrderRequestAlerts: React.FC = () => {
     window.addEventListener('bmb-order-request-change', onChange);
     window.addEventListener('storage', onChange);
     window.addEventListener('focus', onFocus);
-    const unsubscribeRealtime = subscribeToSupabaseChanges(['bmb_orders'], () => { void refresh(false); });
+    const unsubscribeRealtime = subscribeToSupabaseChanges(['bmb_orders'], () => { void refresh(false); }, { requireStaffAuth: true });
     const timer = window.setInterval(() => void refresh(false), ALERT_POLL_MS);
     return () => { unsubscribeRealtime(); window.removeEventListener('bmb-order-request-change', onChange); window.removeEventListener('storage', onChange); window.removeEventListener('focus', onFocus); window.clearInterval(timer); window.speechSynthesis?.cancel(); audioContextRef.current?.close().catch(() => undefined); };
   }, [alertsEnabled]);
