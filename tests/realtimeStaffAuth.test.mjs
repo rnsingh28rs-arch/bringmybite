@@ -23,7 +23,8 @@ test('CMS realtime subscribes only to tables in the Supabase Realtime publicatio
 });
 
 test('Realtime wire format matches the V1 map serializer reported by production logs', () => {
-  assert.match(realtime, /vsn=1\\.0\\.0/);
-  assert.match(realtime, /current\\.send\\(JSON\\.stringify\\(\\{[\\s\\S]*?event: 'phx_join'/);
-  assert.doesNotMatch(realtime, /JSON\\.stringify\\(\\[\\s*joinRef/);
+  assert.ok(realtime.includes('vsn=1.0.0'));
+  assert.ok(realtime.includes("event: 'phx_join'"));
+  assert.ok(realtime.includes('current.send(JSON.stringify({'));
+  assert.ok(!realtime.includes('JSON.stringify(['));
 });
