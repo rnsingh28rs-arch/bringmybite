@@ -6,6 +6,7 @@ const config:SupabaseRestConfig={
 export const isSupabaseConfigured=Boolean(config.url&&config.anonKey);
 const STAFF_SESSION_KEY='bmb_staff_session_v1';
 function getStaffAccessToken(){try{const raw=localStorage.getItem(STAFF_SESSION_KEY);if(!raw)return '';const session=JSON.parse(raw);if(typeof session?.access_token==='string'&&session.access_token.trim()&&Number(session.expires_at||0)>Date.now())return session.access_token;return '';}catch{return '';}}
+export const hasValidStaffSession=()=>Boolean(getStaffAccessToken());
 const jsonHeaders=()=>({'Content-Type':'application/json',apikey:config.anonKey});
 const authHeaders=()=>({...jsonHeaders(),Authorization:`Bearer ${getStaffAccessToken()||config.anonKey}`});
 export const getSupabaseUrl=()=>config.url;
