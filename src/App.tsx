@@ -26,6 +26,7 @@ import { DAdminDesigner } from './components/panels/DAdminDesigner';
 import { CalculatorWidget } from './components/common/CalculatorWidget';
 import { OrderRequestAlerts } from './components/panels/OrderRequestAlerts';
 import { PanelApp } from './components/panels/PanelApp';
+import { SimpleStaffLogin } from './components/panels/SimpleStaffLogin';
 import { CmsProvider } from './cms/CmsContext';
 import { resolveStaffRoute } from './utils/staffRoute.mjs';
 import { resolvePanelRole } from './utils/mobilePanelRouting.mjs';
@@ -50,6 +51,6 @@ const MainContent:React.FC=()=>{
   if(role==='customer' && seoRoute && seoRoute.path!=='/') return <><SeoManager/><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><PublicSeoPage path={seoRoute.path}/><Footer/></div></>;
   if(role==='customer') return <MobileAppFrame><><SeoManager/><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><TemporaryNoticeTicker/><TodayMenuTicker/><SubscriptionPlanPromoBanner/><ExpiryReminderBanner/><OrderStatusNotifier/><CustomerConversionHome/><Footer/><ChatBox/><WeeklyMenuModal/><RegistrationModal/><InstantOrderModal/><BonusOffersModal/><RenewalModal/><ReminderPreviewModal/><NativeAppDownloadModal/></div></></MobileAppFrame>;
   const staffWorkspace=<div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><SeoManager/><TopBar/><Header/><StaffNavBar/><main className="flex-1">{role==='admin'&&<><OrderRequestAlerts/><AdminPanel/></>}{role==='manager'&&<ManagerStockPanel/>}{role==='chef'&&<ChefKitchenPanel/>}{role==='d_admin'&&<DAdminDesigner/>}</main>{(role==='manager'||role==='chef')&&<CalculatorWidget/>}<Footer/></div>;
-  return staffWorkspace;
+  return <SimpleStaffLogin role={role}>{staffWorkspace}</SimpleStaffLogin>;
 };
 export default function App(){return <CmsProvider><AppProvider><MainContent/></AppProvider></CmsProvider>;}
