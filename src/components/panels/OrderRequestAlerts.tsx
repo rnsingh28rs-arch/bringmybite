@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BellRing, CheckCircle2, Clock3, XCircle } from 'lucide-react';
 import { getStoredOrders, StoredOrder, updateStoredOrder } from '../../utils/orderStore';
-import { subscribeToSupabaseChanges } from '../../cms/supabaseRealtime';
+import { subscribeToSupabaseChanges, RealtimeStatus } from '../../cms/supabaseRealtime';
 import { formatNewOrderAlert, getNewOrders } from '../../utils/orderAlerts.mjs';
 
 const ALERT_POLL_MS = 3000;
@@ -14,6 +14,8 @@ export const OrderRequestAlerts: React.FC = () => {
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState('');
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('connecting');
+  const [realtimeDetail, setRealtimeDetail] = useState('Opening secure Realtime connection.');
 
   const enableAlerts = async () => {
     try {
@@ -82,13 +84,24 @@ export const OrderRequestAlerts: React.FC = () => {
     window.addEventListener('bmb-order-request-change', onChange);
     window.addEventListener('storage', onChange);
     window.addEventListener('focus', onFocus);
-    const unsubscribeRealtime = subscribeToSupabaseChanges(['bmb_orders'], () => { void refresh(false); });
+    const unsubscribeRealtime = subscribeToSupabaseChanges(['bmb_orders'], () => { void refresh(false); }, (status, detail) => {
+      setRealtimeStatus(status);
+      setRealtimeDetail(detail || status);
+    });
     const timer = window.setInterval(() => void refresh(false), ALERT_POLL_MS);
     return () => { unsubscribeRealtime(); window.removeEventListener('bmb-order-request-change', onChange); window.removeEventListener('storage', onChange); window.removeEventListener('focus', onFocus); window.clearInterval(timer); window.speechSynthesis?.cancel(); audioContextRef.current?.close().catch(() => undefined); };
   }, [alertsEnabled]);
 
+  const realtimeTone = realtimeStatus === 'subscribed' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : realtimeStatus === 'error' ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-amber-200 bg-amber-50 text-amber-900';
+  const realtimeLabel = realtimeStatus === 'subscribed' ? 'LIVE DELIVERY CONNECTED' : realtimeStatus === 'error' ? 'LIVE DELIVERY RETRYING' : realtimeStatus === 'connected' ? 'CONNECTION OPEN — SUBSCRIPTION PENDING' : realtimeStatus === 'disconnected' ? 'LIVE DELIVERY DISCONNECTED' : 'CONNECTING TO LIVE DELIVERY';
+
   return <>
     {loadError && <div role="alert" className="mx-1 mb-3 rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800">Order loading failed: {loadError}</div>}
+    <div role="status" aria-live="polite" className={`mx-1 mb-2 rounded-xl border px-3 py-2 ${realtimeTone}`}>
+      <div className="text-[10px] font-black">{realtimeLabel}</div>
+      <div className="mt-1 break-words text-[10px]">{realtimeDetail}</div>
+      <div className="mt-1 text-[9px] opacity-80">Order list also refreshes every 3 seconds as a fallback. The live badge changes to connected only after Supabase confirms the subscription.</div>
+    </div>
     <div className="sticky top-2 z-[100] mx-1 mb-3 flex items-center justify-between gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2 shadow-md">
       <div className="flex items-center gap-2"><BellRing className="w-5 h-5 text-amber-700" /><div><div className="text-xs font-black text-amber-900">{pendingOrders.length ? `${pendingOrders.length} NEW ORDER${pendingOrders.length > 1 ? 'S' : ''} WAITING` : 'No pending orders'}</div><div className="text-[9px] text-amber-800">Pending orders remain here until accepted or declined.</div></div></div>
       <button type="button" onClick={enableAlerts} className={`shrink-0 rounded-xl px-3 py-2 text-[10px] font-black border ${alertsEnabled ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-amber-400 text-black border-amber-500'}`}>{alertsEnabled ? '🔔 On' : '🔔 Enable'}</button>
