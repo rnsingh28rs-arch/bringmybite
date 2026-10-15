@@ -1,4 +1,4 @@
-import { isSupabaseConfigured, supabaseSelect, supabasePatch, supabaseRpc, getSupabaseUrl, getSupabasePublishableKey } from '../cms/supabaseRest';
+import { isSupabaseConfigured, supabaseRpc, getSupabaseUrl, getSupabasePublishableKey } from '../cms/supabaseRest';
 import { toUiOrderStatus, toDatabaseOrderStatus } from './orderStatus.mjs';
 
 export type StoredOrderKind = 'instant' | 'subscription';
