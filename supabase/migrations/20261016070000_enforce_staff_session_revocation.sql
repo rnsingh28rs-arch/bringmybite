@@ -17,6 +17,11 @@ SET search_path TO 'public'
 AS $function$
   SELECT auth.uid() IS NOT NULL
     AND NULLIF(auth.jwt()->>'session_id', '') IS NOT NULL
+    AND EXISTS (
+      SELECT 1 FROM auth.sessions s
+      WHERE s.id::text = auth.jwt()->>'session_id'
+        AND s.user_id = auth.uid()
+    )
     AND NOT EXISTS (
       SELECT 1 FROM public.bmb_revoked_staff_sessions r
       WHERE r.session_id = auth.jwt()->>'session_id'
