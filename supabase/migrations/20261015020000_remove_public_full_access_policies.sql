@@ -90,24 +90,24 @@ create policy "bmb_dadmin_manage_subscription_extensions" on public.bmb_subscrip
 
 -- Subscription roles receive only their explicitly assigned panel actions.
 create policy "bmb_staff_read_subscriptions" on public.bmb_subscriptions
-  for select to authenticated using (public.bmb_has_staff_permission('subscriptions', 'read'));
+  for select to authenticated using (public.bmb_has_staff_permission('customers', 'read'));
 create policy "bmb_staff_add_subscriptions" on public.bmb_subscriptions
-  for insert to authenticated with check (public.bmb_has_staff_permission('subscriptions', 'add'));
+  for insert to authenticated with check (public.bmb_has_staff_permission('customers', 'add'));
 create policy "bmb_staff_write_subscriptions" on public.bmb_subscriptions
-  for update to authenticated using (public.bmb_has_staff_permission('subscriptions', 'write'))
-  with check (public.bmb_has_staff_permission('subscriptions', 'write'));
+  for update to authenticated using (public.bmb_has_staff_permission('customers', 'write'))
+  with check (public.bmb_has_staff_permission('customers', 'write'));
 create policy "bmb_staff_delete_subscriptions" on public.bmb_subscriptions
-  for delete to authenticated using (public.bmb_has_staff_permission('subscriptions', 'delete'));
+  for delete to authenticated using (public.bmb_has_staff_permission('customers', 'delete'));
 
 create policy "bmb_staff_read_subscription_extensions" on public.bmb_subscription_extensions
-  for select to authenticated using (public.bmb_has_staff_permission('subscriptions', 'read'));
+  for select to authenticated using (public.bmb_has_staff_permission('customers', 'read'));
 create policy "bmb_staff_add_subscription_extensions" on public.bmb_subscription_extensions
-  for insert to authenticated with check (public.bmb_has_staff_permission('subscriptions', 'add'));
+  for insert to authenticated with check (public.bmb_has_staff_permission('customers', 'add'));
 create policy "bmb_staff_write_subscription_extensions" on public.bmb_subscription_extensions
-  for update to authenticated using (public.bmb_has_staff_permission('subscriptions', 'write'))
-  with check (public.bmb_has_staff_permission('subscriptions', 'write'));
+  for update to authenticated using (public.bmb_has_staff_permission('customers', 'write'))
+  with check (public.bmb_has_staff_permission('customers', 'write'));
 create policy "bmb_staff_delete_subscription_extensions" on public.bmb_subscription_extensions
-  for delete to authenticated using (public.bmb_has_staff_permission('subscriptions', 'delete'));
+  for delete to authenticated using (public.bmb_has_staff_permission('customers', 'delete'));
 
 -- Only active staff with explicit order permissions can view or update orders.
 -- Public order creation cannot set its own approval or payment verification status.
