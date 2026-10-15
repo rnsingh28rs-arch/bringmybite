@@ -82,6 +82,8 @@ BEGIN
 
   v_status := CASE WHEN v_total_received >= v_indent.quantity_needed THEN 'Delivered' ELSE 'Approved' END;
 
+  PERFORM set_config('app.bmb_inventory_receipt_rpc','true',true);
+
   UPDATE public.bmb_chef_indents
   SET received_quantity = v_total_received,
       received_at = now(),
