@@ -15,5 +15,5 @@ test('public visitors do not trigger staff-only table reads', () => {
 
 test('public visitors do not create staff-table Realtime subscriptions', () => {
   assert.match(source, /if\(!isSupabaseConfigured\|\|!hasValidStaffSession\(\)\)return;/);
-  assert.match(source, /const unsubscribe=subscribeToSupabaseChanges\(tables,\(\)=>\{void loadData\(\);\}\);/);
+  assert.ok(source.includes('subscribeToSupabaseChanges(tables,()=>{void loadData();},{requireStaffAuth:true}'));
 });
