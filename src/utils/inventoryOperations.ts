@@ -19,7 +19,7 @@ export const recordApprovedInventoryPurchaseReceipt = (
   indentId:string,
   inventoryId:string,
   quantity:number
-) => supabaseRpc('bmb_receive_inventory_purchase',{
+) => supabaseRpc<Record<string,any>>('bmb_receive_inventory_purchase',{
   p_indent_id:indentId,
   p_inventory_id:inventoryId,
   p_quantity:quantity
