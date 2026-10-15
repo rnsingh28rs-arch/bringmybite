@@ -45,7 +45,7 @@ useEffect(()=>{
  if(!isSupabaseConfigured||!hasValidStaffSession())return;
  const role=getStaffSessionRole();
  const tables=role==='d_admin'?['bmb_subscriptions','bmb_orders','bmb_inventory','bmb_chef_indents','bmb_referrals']:['bmb_subscriptions','bmb_orders','bmb_inventory','bmb_chef_indents'];
- const unsubscribe=subscribeToSupabaseChanges(tables,()=>{void loadData();});
+ const unsubscribe=subscribeToSupabaseChanges(tables,()=>{void loadData();},{requireStaffAuth:true});
  const fallback=window.setInterval(()=>void loadData(),60000);
  return()=>{unsubscribe();window.clearInterval(fallback);};
 },[]);
