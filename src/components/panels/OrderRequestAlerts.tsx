@@ -45,7 +45,7 @@ export const OrderRequestAlerts: React.FC = () => {
   const announce = (order: StoredOrder) => {
     playAlert();
     if ('Notification' in window && Notification.permission === 'granted') {
-      try { new Notification('Bring My Bite — New Order Request', { body: `${order.customerName || 'Customer'} • ${order.id} • ₹${Number(order.amount || order.totalPrice || 0).toLocaleString('en-IN')}`, tag: `bmb-order-${order.id}` }); } catch { /* optional */ }
+      try { new Notification('Bring My Bite — New Order Request', { body: `${order.customerName || 'Customer'} • ${order.id} • ₹${Number(order.amount || 0).toLocaleString('en-IN')}`, tag: `bmb-order-${order.id}` }); } catch { /* optional */ }
     }
     if (alertsEnabled && 'speechSynthesis' in window) {
       try { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(`New order request from ${order.customerName || 'customer'}. Order ${order.id}.`)); } catch { /* optional */ }
