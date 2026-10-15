@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DayMenuSchedule, PackageType } from '../types';
 import { DEFAULT_BANNERS, DEFAULT_MENUS, DEFAULT_PANELS, DEFAULT_PAYMENT, DEFAULT_PRICING, DEFAULT_REGISTRATION_FIELDS, DEFAULT_ROLES, DEFAULT_SITE_SETTINGS, PricingConfig, BannerConfig, RegistrationFieldConfig } from './cmsDefaults';
-import { isSupabaseConfigured, supabaseDelete, supabaseSelect, supabaseUpsert } from './supabaseRest';
+import { getStaffSessionRole, hasValidStaffSession, isSupabaseConfigured, supabaseDelete, supabaseSelect, supabaseUpsert } from './supabaseRest';
 import { subscribeToSupabaseChanges } from './supabaseRealtime';
 
 export interface PanelConfig { id: string; name: string; sort_order: number; active: boolean; }
@@ -36,10 +36,20 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLoading(true); setError('');
     if (!isSupabaseConfigured) { const cached = readLocalCms(); if (cached) { setSiteSettings({ ...DEFAULT_SITE_SETTINGS, ...(cached.siteSettings || {}) }); setPricing({ ...DEFAULT_PRICING, ...(cached.pricing || {}) }); setBanners(cached.banners?.length ? cached.banners : DEFAULT_BANNERS); setPayment(cached.payment || DEFAULT_PAYMENT); setRegistrationFields(cached.registrationFields?.length ? cached.registrationFields : DEFAULT_REGISTRATION_FIELDS); setMenus(cached.menus || DEFAULT_MENUS); setPanels(cached.panels?.length ? cached.panels : DEFAULT_PANELS); setRoles(cached.roles?.length ? cached.roles : DEFAULT_ROLES); setPermissions(cached.permissions || []); setAdminUsers(cached.adminUsers || []); } setLoading(false); return; }
     try {
-      const [settingsRows, pricingRows, bannerRows, paymentRows, fieldRows, menuRows, panelRows, roleRows, permissionRows, adminUserRows] = await Promise.all([
-        supabaseSelect<{ key: string; value: string }>('bmb_settings', 'select=key,value'), supabaseSelect<{ key: string; value: number }>('bmb_pricing', 'select=key,value'), supabaseSelect<BannerConfig>('bmb_banners', 'select=*&order=sort_order.asc'), supabaseSelect<any>('bmb_payment_settings', 'select=*&limit=1'),
-        supabaseSelect<RegistrationFieldConfig>('bmb_registration_fields', 'select=*&order=sort_order.asc'), supabaseSelect<{ package_type: PackageType; menu: DayMenuSchedule[] }>('bmb_menus', 'select=*'), supabaseSelect<PanelConfig>('bmb_panels', 'select=*&order=sort_order.asc'), supabaseSelect<RoleConfig>('bmb_roles', 'select=*'), supabaseSelect<PermissionConfig>('bmb_permissions', 'select=*'), supabaseSelect<AdminUserConfig>('bmb_admin_users', 'select=user_id,username,email,role_id,active')
+      const [settingsRows, pricingRows, bannerRows, paymentRows, fieldRows, menuRows] = await Promise.all([
+        supabaseSelect<{ key: string; value: string }>('bmb_settings', 'select=key,value'), supabaseSelect<{ key: string; value: number }>('bmb_pricing', 'select=key,value'), supabaseSelect<BannerConfig>('bmb_banners', 'select=*&order=sort_order.asc'), getStaffSessionRole() === 'd_admin' ? supabaseSelect<any>('bmb_payment_settings', 'select=*&limit=1') : supabaseSelect<any>('bmb_public_payment_settings', 'select=*&limit=1'),
+        supabaseSelect<RegistrationFieldConfig>('bmb_registration_fields', 'select=*&order=sort_order.asc'), supabaseSelect<{ package_type: PackageType; menu: DayMenuSchedule[] }>('bmb_menus', 'select=*')
       ]);
+      // Internal authorization metadata is loaded only after a staff session exists.
+      // Public visitors must not need access to staff, roles, or permission tables.
+      const [panelRows, roleRows, permissionRows, adminUserRows] = hasValidStaffSession()
+        ? await Promise.all([
+            supabaseSelect<PanelConfig>('bmb_panels', 'select=*&order=sort_order.asc'),
+            supabaseSelect<RoleConfig>('bmb_roles', 'select=*'),
+            supabaseSelect<PermissionConfig>('bmb_permissions', 'select=*'),
+            supabaseSelect<AdminUserConfig>('bmb_admin_users', 'select=user_id,username,email,role_id,active')
+          ])
+        : [[], [], [], []] as [PanelConfig[], RoleConfig[], PermissionConfig[], AdminUserConfig[]];
       const nextSettings = { ...DEFAULT_SITE_SETTINGS, ...asRecord(settingsRows) }, nextPricing = { ...DEFAULT_PRICING, ...Object.fromEntries(pricingRows.map(r => [r.key, Number(r.value)])) }, nextMenus = menuRows.length ? { ...DEFAULT_MENUS, ...Object.fromEntries(menuRows.map(r => [r.package_type, r.menu])) } : DEFAULT_MENUS;
       setSiteSettings(nextSettings); setPricing(nextPricing); setBanners(bannerRows.length ? bannerRows : DEFAULT_BANNERS); if (paymentRows[0]) setPayment({ bankName: paymentRows[0].bank_name, accountHolder: paymentRows[0].account_holder, accountNumber: paymentRows[0].account_number, ifscCode: paymentRows[0].ifsc_code, accountType: paymentRows[0].account_type, authorizedSignatory: paymentRows[0].authorized_signatory, upiId: paymentRows[0].upi_id, phone: paymentRows[0].phone, qrUrl: paymentRows[0].qr_url }); if (fieldRows.length) setRegistrationFields(fieldRows); setMenus(nextMenus); if (panelRows.length) setPanels(panelRows); if (roleRows.length) setRoles(roleRows); setPermissions(permissionRows); setAdminUsers(adminUserRows);
       writeLocalCms({ siteSettings: nextSettings, pricing: nextPricing, banners: bannerRows.length ? bannerRows : DEFAULT_BANNERS, payment: paymentRows[0] ? { bankName: paymentRows[0].bank_name, accountHolder: paymentRows[0].account_holder, accountNumber: paymentRows[0].account_number, ifscCode: paymentRows[0].ifsc_code, accountType: paymentRows[0].account_type, authorizedSignatory: paymentRows[0].authorized_signatory, upiId: paymentRows[0].upi_id, phone: paymentRows[0].phone, qrUrl: paymentRows[0].qr_url } : DEFAULT_PAYMENT, registrationFields: fieldRows.length ? fieldRows : DEFAULT_REGISTRATION_FIELDS, menus: nextMenus, panels: panelRows.length ? panelRows : DEFAULT_PANELS, roles: roleRows.length ? roleRows : DEFAULT_ROLES, permissions: permissionRows, adminUsers: adminUserRows });

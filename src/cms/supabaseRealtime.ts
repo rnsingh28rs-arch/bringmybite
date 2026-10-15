@@ -3,7 +3,18 @@ type RealtimeCallback = (table: string, payload: unknown) => void;
 
 const projectUrl = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tknmdgeikmlsprqppukf.supabase.co').replace(/\/$/, '');
 const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_8aupeYk6D1q4c0T_EtzgtQ_rViMvNME';
-const websocketUrl = () => `${projectUrl.replace(/^http/, 'ws')}/realtime/v1/websocket?apikey=${encodeURIComponent(anonKey)}&vsn=1.0.0`;
+
+// Supabase Realtime's V2 JSON serializer uses object-shaped frames. The legacy
+// V1 array serializer triggers "V1 JSON Serializer expected a map" on the server.
+const websocketUrl = () => `${projectUrl.replace(/^http/, 'ws')}/realtime/v1/websocket?apikey=${encodeURIComponent(anonKey)}&vsn=2.0.0`;
+
+interface RealtimeFrame {
+  topic?: string;
+  event?: string;
+  payload?: any;
+  ref?: string | number | null;
+  join_ref?: string | null;
+}
 
 export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: RealtimeCallback): () => void {
   if (typeof WebSocket === 'undefined' || !tables.length) return () => {};
@@ -16,11 +27,10 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
   let ref = 0;
   let joinRef = '';
   const topic = `realtime:public:portal-${Math.random().toString(36).slice(2)}`;
-
   const currentToken = () => anonKey;
 
   const cleanupSocket = () => {
-    if (heartbeat) { window.clearInterval(heartbeat); heartbeat = undefined; }
+    if (heartbeat !== undefined) { window.clearInterval(heartbeat); heartbeat = undefined; }
     if (socket) {
       socket.onopen = null;
       socket.onmessage = null;
@@ -31,8 +41,12 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
     }
   };
 
+  const send = (frame: RealtimeFrame) => {
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(frame));
+  };
+
   const scheduleReconnect = () => {
-    if (closed || reconnectTimer) return;
+    if (closed || reconnectTimer !== undefined) return;
     reconnectAttempt += 1;
     const delay = Math.min(30000, 1000 * 2 ** Math.min(reconnectAttempt - 1, 5));
     reconnectTimer = window.setTimeout(() => { reconnectTimer = undefined; connect(); }, delay);
@@ -41,18 +55,22 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
   const connect = () => {
     if (closed) return;
     cleanupSocket();
-    socket = new WebSocket(websocketUrl());
+    try {
+      socket = new WebSocket(websocketUrl());
+    } catch {
+      scheduleReconnect();
+      return;
+    }
     joinRef = String(++ref);
 
     socket.addEventListener('open', () => {
-      reconnectAttempt = 0;
       if (!socket || socket.readyState !== WebSocket.OPEN) return;
-      socket.send(JSON.stringify([
-        joinRef,
-        String(++ref),
+      send({
         topic,
-        'phx_join',
-        {
+        event: 'phx_join',
+        ref: String(++ref),
+        join_ref: joinRef,
+        payload: {
           config: {
             broadcast: { ack: false, self: false },
             presence: { key: '' },
@@ -60,25 +78,26 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
           },
           access_token: currentToken()
         }
-      ]));
+      });
       heartbeat = window.setInterval(() => {
-        if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify([null, String(++ref), 'phoenix', 'heartbeat', {}]));
+        send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++ref) });
       }, 25000);
     });
 
     socket.addEventListener('message', event => {
       try {
-        const message = JSON.parse(event.data);
-        if (message?.[2] !== topic) return;
-        if (message?.[3] === 'postgres_changes') {
-          const data = message?.[4]?.data;
-          const table = data?.table;
+        const message = JSON.parse(String(event.data)) as RealtimeFrame;
+        if (message.topic !== topic) return;
+        if (message.event === 'postgres_changes') {
+          const data = message.payload?.data ?? message.payload;
+          const table = data?.table ?? data?.record?.table;
           if (typeof table === 'string') onChange(table, data);
           return;
         }
-        if (message?.[3] === 'phx_reply' && message?.[4]?.status === 'error') scheduleReconnect();
+        if (message.event === 'phx_reply' && message.payload?.status === 'error') scheduleReconnect();
+        if (message.event === 'system' && message.payload?.status === 'error') scheduleReconnect();
       } catch {
-        // Ignore malformed realtime frames; the database remains authoritative.
+        // Ignore malformed frames; the database remains the source of truth.
       }
     });
 
@@ -87,10 +106,9 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
   };
 
   connect();
-
   return () => {
     closed = true;
-    if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
     cleanupSocket();
   };
 }
