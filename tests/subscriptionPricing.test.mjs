@@ -21,5 +21,5 @@ test('lunch rejects egg and non-veg subscriptions', () => {
 });
 
 test('legacy Lunch + Dinner package pricing remains available', () => {
-  assert.deepEqual(getSubscriptionPlan('Lunch + Dinner', 'VEG CLASSIC'), { mealPreference: 'Lunch + Dinner', packageType: 'VEG CLASSIC', label: 'Veg Classic Package', price: 3700 });
+  assert.deepEqual(getSubscriptionPlan('Lunch + Dinner', 'VEG CLASSIC'), { mealPreference: 'Lunch + Dinner', packageType: 'VEG CLASSIC', label: 'Veg Classic Thali — Lunch + Dinner', price: 3700 });
 });
