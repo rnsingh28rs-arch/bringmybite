@@ -1,3 +1,5 @@
+import { getSupabaseRealtimeAccessToken } from './supabaseRest';
+
 type RealtimeTable = string;
 type RealtimeCallback = (table: string, payload: unknown) => void;
 
@@ -18,6 +20,7 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
   let reconnectAttempt = 0;
   let ref = 0;
   let joinRef = '';
+  let activeAccessToken = '';
   const topic = `realtime:public:portal-${Math.random().toString(36).slice(2)}`;
 
   const cleanupSocket = () => {
@@ -45,6 +48,7 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
     try { socket = new WebSocket(websocketUrl()); }
     catch { scheduleReconnect(); return; }
     joinRef = String(++ref);
+    activeAccessToken = getSupabaseRealtimeAccessToken();
 
     socket.addEventListener('open', () => {
       if (!socket || socket.readyState !== WebSocket.OPEN) return;
@@ -59,10 +63,14 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
             presence: { key: '' },
             postgres_changes: tables.map(table => ({ event: '*', schema: 'public', table }))
           },
-          access_token: anonKey
+          access_token: activeAccessToken
         }
       ]));
       heartbeat = window.setInterval(() => {
+        if (getSupabaseRealtimeAccessToken() !== activeAccessToken) {
+          connect();
+          return;
+        }
         if (socket?.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify([null, String(++ref), 'phoenix', 'heartbeat', {}]));
         }
@@ -81,6 +89,7 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
           if (typeof table === 'string') onChange(table, data);
           return;
         }
+        if (eventName === 'phx_reply' && payload?.status === 'ok') reconnectAttempt = 0;
         if (eventName === 'phx_reply' && payload?.status === 'error') scheduleReconnect();
       } catch {
         // Ignore malformed frames; the database remains the source of truth.
