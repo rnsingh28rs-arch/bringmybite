@@ -26,7 +26,7 @@ test('logout revokes the database session before signing out of Supabase Auth', 
 
 test('staff panel rechecks sessions periodically and on focus/storage changes', () => {
   assert.match(login, /bmb_get_staff_account/);
-  assert.match(login, /setInterval\(\(\) => \{ if \(document\.visibilityState === 'visible'\)/);
+  assert.match(login, /setInterval\(\(\) => \{\s*if \(document\.visibilityState === 'visible'\)/);
   assert.match(login, /addEventListener\('storage'/);
   assert.match(login, /bmb-staff-session-change/);
 });
