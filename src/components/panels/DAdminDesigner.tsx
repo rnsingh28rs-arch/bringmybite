@@ -5,6 +5,7 @@ import { PackageType } from '../../types';
 import { Save, Plus, Trash2, ShieldCheck, LayoutDashboard, Image, Utensils, FileText, CreditCard, Settings, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { StaffFinancePanel } from './StaffFinancePanel';
 import { GSTBillingPanel } from './GSTBillingPanel';
+import { StaffPasswordManager } from './StaffPasswordManager';
 
 const input = 'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500';
 const card = 'bg-white rounded-2xl border border-gray-200 shadow-sm p-5';
@@ -21,7 +22,7 @@ export const DAdminDesigner: React.FC = () => {
 
   const tabs = [
     ['overview','Overview',LayoutDashboard], ['branding','Brand & Business',Settings], ['banners','Banners',Image], ['menu','Menu',Utensils],
-    ['registration','Registration Form',FileText], ['payments','Payments & UPI',CreditCard], ['staff','Staff Salaries',ShieldCheck], ['billing','GST Billing',CreditCard], ['access','Roles & Permissions',ShieldCheck], ['all-panels','All Panels',LayoutDashboard]
+    ['registration','Registration Form',FileText], ['payments','Payments & UPI',CreditCard], ['staff','Staff Salaries',ShieldCheck], ['billing','GST Billing',CreditCard], ['access','Roles & Permissions',ShieldCheck], ['passwords','Password Management',ShieldCheck], ['all-panels','All Panels',LayoutDashboard]
   ] as const;
 
   return (
@@ -60,6 +61,7 @@ export const DAdminDesigner: React.FC = () => {
         {tab === 'payments' && <Payments cms={cms} flash={flash} />}
         {tab === 'staff' && <StaffFinancePanel title="D-Admin Staff Salaries & Payroll" />}
         {tab === 'billing' && <GSTBillingPanel />}
+        {tab === 'passwords' && <StaffPasswordManager />}
         {tab === 'all-panels' && <AllPanels cms={cms} />}
         {tab === 'access' && <Access cms={cms} selectedRole={selectedRole} setSelectedRole={setSelectedRole} newPanel={newPanel} setNewPanel={setNewPanel} newRole={newRole} setNewRole={setNewRole} flash={flash} />}
       </div>
