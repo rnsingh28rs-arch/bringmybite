@@ -18,6 +18,6 @@ test('Realtime reconnects when the staff access token rotates after session refr
 
 test('CMS realtime subscribes only to tables in the Supabase Realtime publication', () => {
   const cms = fs.readFileSync(new URL('../src/cms/CmsContext.tsx', import.meta.url), 'utf8');
-  assert.match(cms, /const tables=\['bmb_settings','bmb_pricing','bmb_banners','bmb_menus','bmb_registration_fields','bmb_payment_settings'\]/);
+  assert.match(cms, /const tables=\['bmb_settings','bmb_pricing','bmb_banners','bmb_menus','bmb_registration_fields'\]/);
   assert.doesNotMatch(cms, /const tables=\[[^\]]*'bmb_admin_users'/);
 });
