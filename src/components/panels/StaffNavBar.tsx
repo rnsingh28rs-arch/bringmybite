@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { STAFF_SESSION_STORAGE_KEY } from '../../cms/supabaseRest';
 import { ShieldAlert, Briefcase, ChefHat, LogOut, Sparkles } from 'lucide-react';
 
 export const StaffNavBar: React.FC = () => {
@@ -30,7 +31,7 @@ export const StaffNavBar: React.FC = () => {
           <button type="button" onClick={() => window.location.assign('/dadmin')} className="px-3 py-1.5 rounded-lg font-bold text-amber-300 hover:text-white hover:bg-amber-500/20 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" />D-Admin</button>
         </div>
 
-        <button type="button" onClick={() => { setActiveRole('customer'); window.location.assign('/'); }} className="flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-black px-4 py-1.5 rounded-xl font-bold text-xs shadow-md">
+        <button type="button" onClick={() => { localStorage.removeItem(STAFF_SESSION_STORAGE_KEY); setActiveRole('customer'); window.location.assign('/'); }} className="flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-black px-4 py-1.5 rounded-xl font-bold text-xs shadow-md">
           <LogOut className="w-3.5 h-3.5" />Exit to Website
         </button>
       </div>
