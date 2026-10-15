@@ -60,7 +60,17 @@ create policy "bmb_public_read_payment_settings" on public.bmb_payment_settings
 create policy "bmb_dadmin_manage_payment_settings" on public.bmb_payment_settings
   for all to authenticated using (public.bmb_is_dadmin()) with check (public.bmb_is_dadmin());
 
--- Internal role/panel configuration is not public.
+-- Staff may read the role/panel catalogue needed to render their assigned UI.
+-- Mutation remains D-Admin-only.
+create policy "bmb_authenticated_read_panels" on public.bmb_panels
+  for select to authenticated using (true);
+create policy "bmb_authenticated_read_roles" on public.bmb_roles
+  for select to authenticated using (true);
+create policy "bmb_authenticated_read_permissions" on public.bmb_permissions
+  for select to authenticated using (true);
+create policy "bmb_staff_read_own_admin_user" on public.bmb_admin_users
+  for select to authenticated using (user_id = auth.uid()::text);
+
 create policy "bmb_dadmin_manage_panels" on public.bmb_panels
   for all to authenticated using (public.bmb_is_dadmin()) with check (public.bmb_is_dadmin());
 create policy "bmb_dadmin_manage_roles" on public.bmb_roles
@@ -77,6 +87,27 @@ create policy "bmb_dadmin_manage_subscriptions" on public.bmb_subscriptions
   for all to authenticated using (public.bmb_is_dadmin()) with check (public.bmb_is_dadmin());
 create policy "bmb_dadmin_manage_subscription_extensions" on public.bmb_subscription_extensions
   for all to authenticated using (public.bmb_is_dadmin()) with check (public.bmb_is_dadmin());
+
+-- Subscription roles receive only their explicitly assigned panel actions.
+create policy "bmb_staff_read_subscriptions" on public.bmb_subscriptions
+  for select to authenticated using (public.bmb_has_staff_permission('subscriptions', 'read'));
+create policy "bmb_staff_add_subscriptions" on public.bmb_subscriptions
+  for insert to authenticated with check (public.bmb_has_staff_permission('subscriptions', 'add'));
+create policy "bmb_staff_write_subscriptions" on public.bmb_subscriptions
+  for update to authenticated using (public.bmb_has_staff_permission('subscriptions', 'write'))
+  with check (public.bmb_has_staff_permission('subscriptions', 'write'));
+create policy "bmb_staff_delete_subscriptions" on public.bmb_subscriptions
+  for delete to authenticated using (public.bmb_has_staff_permission('subscriptions', 'delete'));
+
+create policy "bmb_staff_read_subscription_extensions" on public.bmb_subscription_extensions
+  for select to authenticated using (public.bmb_has_staff_permission('subscriptions', 'read'));
+create policy "bmb_staff_add_subscription_extensions" on public.bmb_subscription_extensions
+  for insert to authenticated with check (public.bmb_has_staff_permission('subscriptions', 'add'));
+create policy "bmb_staff_write_subscription_extensions" on public.bmb_subscription_extensions
+  for update to authenticated using (public.bmb_has_staff_permission('subscriptions', 'write'))
+  with check (public.bmb_has_staff_permission('subscriptions', 'write'));
+create policy "bmb_staff_delete_subscription_extensions" on public.bmb_subscription_extensions
+  for delete to authenticated using (public.bmb_has_staff_permission('subscriptions', 'delete'));
 
 -- Only active staff with explicit order permissions can view or update orders.
 -- Public order creation cannot set its own approval or payment verification status.
