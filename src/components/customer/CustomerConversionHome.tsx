@@ -176,7 +176,7 @@ export const CustomerConversionHome: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-widest text-[#C88A24]">Today's menu</p>
+              <p className="text-xs font-extrabold uppercase tracking-widest text-[#C88A24]">Today's Menu</p>
               <h2 className="mt-1 text-3xl sm:text-4xl font-extrabold text-[#0C3822] font-serif-title">See What You're Eating Today</h2>
               <p className="mt-2 text-sm text-gray-600"><span className="font-bold text-[#124E33]">{todayName}</span> • CMS-updated menu for the selected plan</p>
             </div>
