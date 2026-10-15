@@ -19,7 +19,7 @@ test('customer mobile primary controls are real touch controls', () => {
   assert.match(source, /<button[\s\S]*onClick=/);
   assert.match(source, /setIsInstantOrderOpen\(true\)/);
   assert.match(source, /setIsRegistrationOpen\(true\)/);
-  assert.match(source, /setIsWeeklyMenuOpen\(true\)/);
+  assert.match(source, /setTab\('menu'\)/);
 });
 
 test('mobile customer view is not trapped inside a nested scrolling touch frame', () => {
