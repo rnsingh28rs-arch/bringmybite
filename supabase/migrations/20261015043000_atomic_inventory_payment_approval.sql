@@ -36,8 +36,8 @@ BEGIN
   END IF;
 
   SELECT count(*) INTO v_line_count
-  FROM public.bmb_inventory_purchase_request_lines
-  WHERE request_id = p_request_id;
+  FROM public.bmb_inventory_purchase_request_lines l
+  WHERE l.request_id = p_request_id;
 
   IF v_line_count = 0 THEN
     RAISE EXCEPTION 'Payment request has no purchase lines';
