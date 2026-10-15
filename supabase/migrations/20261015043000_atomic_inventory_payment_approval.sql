@@ -60,6 +60,8 @@ BEGIN
       updated_at = now()
   WHERE id = p_request_id;
 
+  PERFORM set_config('app.bmb_payment_approval_rpc','true',true);
+
   UPDATE public.bmb_chef_indents i
   SET payment_status = 'Approved',
       payment_approved_by = v_username,
