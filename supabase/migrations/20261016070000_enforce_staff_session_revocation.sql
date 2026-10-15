@@ -512,7 +512,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$function$
+$function$;
 
 DROP POLICY IF EXISTS bmb_staff_read_own_admin_user ON public.bmb_admin_users;
 CREATE POLICY bmb_staff_read_own_admin_user ON public.bmb_admin_users
