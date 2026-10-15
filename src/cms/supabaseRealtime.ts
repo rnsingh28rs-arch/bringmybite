@@ -1,7 +1,8 @@
-import { getSupabaseRealtimeAccessToken } from './supabaseRest';
+import { getSupabaseRealtimeAccessToken, hasValidStaffSession } from './supabaseRest';
 
 type RealtimeTable = string;
 type RealtimeCallback = (table: string, payload: unknown) => void;
+type RealtimeOptions = { requireStaffAuth?: boolean };
 
 const projectUrl = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tknmdgeikmlsprqppukf.supabase.co').replace(/\/$/, '');
 const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_8aupeYk6D1q4c0T_EtzgtQ_rViMvNME';
@@ -10,7 +11,7 @@ const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env
 // Use the V1 object-frame protocol explicitly rather than sending V2 arrays.
 const websocketUrl = () => `${projectUrl.replace(/^http/, 'ws')}/realtime/v1/websocket?apikey=${encodeURIComponent(anonKey)}&vsn=1.0.0`;
 
-export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: RealtimeCallback): () => void {
+export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: RealtimeCallback, options: RealtimeOptions = {}): () => void {
   if (typeof WebSocket === 'undefined' || !tables.length) return () => {};
 
   let socket: WebSocket | null = null;
@@ -52,6 +53,10 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
   const connect = () => {
     if (closed) return;
     cleanupSocket();
+    if (options.requireStaffAuth && !hasValidStaffSession()) {
+      scheduleReconnect();
+      return;
+    }
     let current: WebSocket;
     try {
       current = new WebSocket(websocketUrl());
