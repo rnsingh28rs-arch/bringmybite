@@ -8,7 +8,7 @@ interface Props { role: StaffRouteRole; children: React.ReactNode; }
 interface Session { role: StaffRouteRole; username: string; access_token: string; refresh_token: string; expires_at: number; }
 const titles: Record<StaffRouteRole, string> = { admin: 'Admin', d_admin: 'D-Admin', manager: 'Manager', chef: 'Chef' };
 export const SimpleStaffLogin: React.FC<Props> = ({ role, children }) => {
-  const [session, setSession] = useState<Session | null>(() => { try { const saved = JSON.parse(localStorage.getItem(STAFF_SESSION_STORAGE_KEY) || 'null') as Session | null; return saved && saved.role === role && typeof saved.access_token === 'string' && saved.access_token.length > 20 && typeof saved.refresh_token === 'string' && saved.refresh_token.length > 20 && saved.expires_at > Date.now() ? saved : null; } catch { return null; } });
+  const [session, setSession] = useState<Session | null>(() => { try { const saved = JSON.parse(localStorage.getItem(STAFF_SESSION_STORAGE_KEY) || 'null') as Session | null; if (saved && saved.role !== role) { localStorage.removeItem(STAFF_SESSION_STORAGE_KEY); return null; } return saved && saved.role === role && typeof saved.access_token === 'string' && saved.access_token.length > 20 && typeof saved.refresh_token === 'string' && saved.refresh_token.length > 20 && saved.expires_at > Date.now() ? saved : null; } catch { return null; } });
   const [username, setUsername] = useState(role === 'd_admin' ? 'dadmin' : role); const [password, setPassword] = useState(''); const [show, setShow] = useState(false); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!session?.refresh_token) return;
