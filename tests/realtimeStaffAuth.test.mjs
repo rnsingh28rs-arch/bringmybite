@@ -28,3 +28,11 @@ test('Realtime wire format matches the V1 map serializer reported by production 
   assert.ok(realtime.includes('current.send(JSON.stringify({'));
   assert.ok(!realtime.includes('JSON.stringify(['));
 });
+
+test('staff-only Realtime channels stop rather than reconnecting anonymously after expiry', () => {
+  assert.match(realtime, /options\.requireStaffAuth && !hasValidStaffSession\(\)/);
+  const app = fs.readFileSync(new URL('../src/context/AppContext.tsx', import.meta.url), 'utf8');
+  const alerts = fs.readFileSync(new URL('../src/components/panels/OrderRequestAlerts.tsx', import.meta.url), 'utf8');
+  assert.ok(app.includes('{requireStaffAuth:true}'));
+  assert.ok(alerts.includes('{ requireStaffAuth: true }'));
+});
