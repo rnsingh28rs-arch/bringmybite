@@ -12,18 +12,19 @@ const roles = [
 const field = 'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500';
 
 export const StaffPasswordManager: React.FC = () => {
-  const [targetRole, setTargetRole] = useState('admin');
-  const [targetUsername, setTargetUsername] = useState('admin');
+  let session: StaffSession | null = null;
+  try { session = JSON.parse(localStorage.getItem(STAFF_SESSION_STORAGE_KEY) || 'null'); } catch {}
+  const isAdmin = session?.role === 'admin';
+  const isDAdmin = session?.role === 'd_admin';
+  const canManageOthers = isAdmin || isDAdmin;
+  const [targetRole, setTargetRole] = useState(isDAdmin ? 'ceo-director' : 'admin');
+  const [targetUsername, setTargetUsername] = useState(isDAdmin ? 'dadmin' : 'admin');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  let session: StaffSession | null = null;
-  try { session = JSON.parse(localStorage.getItem(STAFF_SESSION_STORAGE_KEY) || 'null'); } catch {}
-  const isAdmin = session?.role === 'admin';
-  const isDAdmin = session?.role === 'd_admin';
-  if (!isAdmin && !isDAdmin) return null;
+  if (!canManageOthers) return null;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault(); setMessage(''); setError('');
@@ -35,7 +36,7 @@ export const StaffPasswordManager: React.FC = () => {
       const response = await fetch(`${getSupabaseUrl()}/functions/v1/staff-password-update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: getSupabasePublishableKey(), Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify(isAdmin ? { target_role: targetRole, target_username: targetUsername.trim().toLowerCase(), new_password: password } : { new_password: password }),
+        body: JSON.stringify({ target_role: targetRole, target_username: targetUsername.trim().toLowerCase(), new_password: password }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.success !== true) throw new Error(data.error || 'Password update failed.');
@@ -48,8 +49,8 @@ export const StaffPasswordManager: React.FC = () => {
   return <section className="mx-auto my-5 w-full max-w-4xl rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm sm:p-6">
     <div className="flex items-center gap-3"><div className="rounded-xl bg-emerald-100 p-3 text-emerald-800"><KeyRound className="h-5 w-5"/></div><div><h2 className="text-xl font-black text-[#124E33]">Staff Password Management</h2><p className="text-sm text-gray-500">Updates the actual Supabase Auth password.</p></div></div>
     <form onSubmit={submit} className="mt-5 grid gap-4 md:grid-cols-2">
-      {isAdmin && <><label className="text-sm font-bold text-gray-700">Staff role<select className={field+' mt-1'} value={targetRole} onChange={e=>{setTargetRole(e.target.value);setTargetUsername(({admin:'admin','ceo-director':'dadmin',manager:'manager',chef:'chef'} as Record<string,string>)[e.target.value]||'');}}>{roles.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select></label><label className="text-sm font-bold text-gray-700">Staff username<input className={field+' mt-1'} value={targetUsername} onChange={e=>setTargetUsername(e.target.value)} autoComplete="off" required/></label></>}
-      {!isAdmin && <div className="md:col-span-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-900"><ShieldCheck className="mr-2 inline h-4 w-4"/>D-Admin can change its own password here. Other staff password changes require Admin authorization.</div>}
+      {canManageOthers && <><label className="text-sm font-bold text-gray-700">Staff role<select className={field+' mt-1'} value={targetRole} onChange={e=>{setTargetRole(e.target.value);setTargetUsername(({admin:'admin','ceo-director':'dadmin',manager:'manager',chef:'chef'} as Record<string,string>)[e.target.value]||'');}}>{roles.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select></label><label className="text-sm font-bold text-gray-700">Staff username<input className={field+' mt-1'} value={targetUsername} onChange={e=>setTargetUsername(e.target.value)} autoComplete="off" required/></label></>}
+      {!isAdmin && <div className="md:col-span-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-900"><ShieldCheck className="mr-2 inline h-4 w-4"/>D-Admin and Admin can change passwords for any active staff account. The default selection is your own account.</div>}
       <label className="text-sm font-bold text-gray-700">New password<input className={field+' mt-1'} type="password" autoComplete="new-password" minLength={12} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} required/></label>
       <label className="text-sm font-bold text-gray-700">Confirm new password<input className={field+' mt-1'} type="password" autoComplete="new-password" minLength={12} maxLength={128} value={confirm} onChange={e=>setConfirm(e.target.value)} required/></label>
       {error && <p role="alert" className="md:col-span-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
