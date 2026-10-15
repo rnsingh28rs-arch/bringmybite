@@ -63,7 +63,7 @@ export async function addStoredOrder(order: StoredOrder): Promise<StoredOrder> {
 
 export async function getStoredOrders(): Promise<StoredOrder[]> {
   if (isSupabaseConfigured) {
-    const rows = await supabaseSelect<any>('bmb_orders', 'select=*&order=created_at.desc');
+    const rows = await supabaseRpc<any>('bmb_get_panel_orders');
     return rows.map(normalizeRow);
   }
   return readLocal().map(o => ({ ...o, status: toUiOrderStatus(o.status) }));
@@ -74,7 +74,17 @@ export async function updateStoredOrder(id: string, patch: Partial<StoredOrder>)
   const nextStatus = patch.status;
   const routedRole = patch.assignedRole || roleForStatus(nextStatus || current?.status);
   const routedPatch: Partial<StoredOrder> = { ...patch, assignedRole: routedRole, assignedTo: patch.assignedTo || routedRole, preparationRequestedAt: nextStatus === 'Preparing' ? new Date().toISOString() : patch.preparationRequestedAt };
-  if (isSupabaseConfigured) await supabasePatch('bmb_orders', `id=eq.${encodeURIComponent(id)}`, toDbPatch(routedPatch) as any);
+  if (isSupabaseConfigured) {
+    const dbPatch = toDbPatch(routedPatch);
+    await supabaseRpc<any>('bmb_update_panel_order', {
+      p_order_id: id,
+      ...(dbPatch.status !== undefined ? { p_status: dbPatch.status } : {}),
+      ...(dbPatch.payment_status !== undefined ? { p_payment_status: dbPatch.payment_status } : {}),
+      ...(dbPatch.assigned_role !== undefined ? { p_assigned_role: dbPatch.assigned_role } : {}),
+      ...(dbPatch.assigned_to !== undefined ? { p_assigned_to: dbPatch.assigned_to } : {}),
+      ...(dbPatch.details !== undefined ? { p_details: dbPatch.details } : {})
+    });
+  }
   const rows = readLocal().map(o => o.id === id ? { ...o, ...routedPatch, status: routedPatch.status !== undefined ? toUiOrderStatus(routedPatch.status) : o.status, updatedAt: new Date().toISOString() } : o);
   writeLocal(rows);
 }
