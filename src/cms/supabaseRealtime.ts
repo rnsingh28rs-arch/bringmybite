@@ -6,9 +6,9 @@ type RealtimeCallback = (table: string, payload: unknown) => void;
 const projectUrl = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tknmdgeikmlsprqppukf.supabase.co').replace(/\/$/, '');
 const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_8aupeYk6D1q4c0T_EtzgtQ_rViMvNME';
 
-// Realtime V2 uses Phoenix's positional-array wire format. Keep the protocol
-// version and frame shape paired; V1 expects an object/map instead.
-const websocketUrl = () => `${projectUrl.replace(/^http/, 'ws')}/realtime/v1/websocket?apikey=${encodeURIComponent(anonKey)}&vsn=2.0.0`;
+// Supabase's live Realtime logs report the V1 serializer ("expected a map").
+// Use the V1 object-frame protocol explicitly rather than sending V2 arrays.
+const websocketUrl = () => `${projectUrl.replace(/^http/, 'ws')}/realtime/v1/websocket?apikey=${encodeURIComponent(anonKey)}&vsn=1.0.0`;
 
 export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: RealtimeCallback): () => void {
   if (typeof WebSocket === 'undefined' || !tables.length) return () => {};
@@ -24,14 +24,18 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
   const topic = `realtime:public:portal-${Math.random().toString(36).slice(2)}`;
 
   const cleanupSocket = () => {
-    if (heartbeat !== undefined) { window.clearInterval(heartbeat); heartbeat = undefined; }
-    if (socket) {
-      socket.onopen = null;
-      socket.onmessage = null;
-      socket.onerror = null;
-      socket.onclose = null;
-      try { socket.close(); } catch {}
-      socket = null;
+    if (heartbeat !== undefined) {
+      window.clearInterval(heartbeat);
+      heartbeat = undefined;
+    }
+    const previous = socket;
+    socket = null;
+    if (previous) {
+      previous.onopen = null;
+      previous.onmessage = null;
+      previous.onerror = null;
+      previous.onclose = null;
+      try { previous.close(); } catch {}
     }
   };
 
@@ -39,71 +43,95 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
     if (closed || reconnectTimer !== undefined) return;
     reconnectAttempt += 1;
     const delay = Math.min(30000, 1000 * 2 ** Math.min(reconnectAttempt - 1, 5));
-    reconnectTimer = window.setTimeout(() => { reconnectTimer = undefined; connect(); }, delay);
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = undefined;
+      connect();
+    }, delay);
   };
 
   const connect = () => {
     if (closed) return;
     cleanupSocket();
-    try { socket = new WebSocket(websocketUrl()); }
-    catch { scheduleReconnect(); return; }
+    let current: WebSocket;
+    try {
+      current = new WebSocket(websocketUrl());
+    } catch {
+      scheduleReconnect();
+      return;
+    }
+    socket = current;
     joinRef = String(++ref);
     activeAccessToken = getSupabaseRealtimeAccessToken();
 
-    socket.addEventListener('open', () => {
-      if (!socket || socket.readyState !== WebSocket.OPEN) return;
-      socket.send(JSON.stringify([
-        joinRef,
-        String(++ref),
+    current.onopen = () => {
+      if (socket !== current || current.readyState !== WebSocket.OPEN) return;
+      current.send(JSON.stringify({
         topic,
-        'phx_join',
-        {
+        event: 'phx_join',
+        payload: {
           config: {
             broadcast: { ack: false, self: false },
             presence: { key: '' },
             postgres_changes: tables.map(table => ({ event: '*', schema: 'public', table }))
           },
           access_token: activeAccessToken
-        }
-      ]));
+        },
+        ref: String(++ref),
+        join_ref: joinRef
+      }));
+
       heartbeat = window.setInterval(() => {
+        if (socket !== current || current.readyState !== WebSocket.OPEN) return;
         if (getSupabaseRealtimeAccessToken() !== activeAccessToken) {
           connect();
           return;
         }
-        if (socket?.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify([null, String(++ref), 'phoenix', 'heartbeat', {}]));
-        }
+        current.send(JSON.stringify({
+          topic: 'phoenix',
+          event: 'heartbeat',
+          payload: {},
+          ref: String(++ref)
+        }));
       }, 25000);
-    });
+    };
 
-    socket.addEventListener('message', event => {
+    current.onmessage = event => {
+      if (socket !== current) return;
       try {
         const message = JSON.parse(String(event.data));
-        if (!Array.isArray(message) || message[2] !== topic) return;
-        const eventName = message[3];
-        const payload = message[4];
+        if (!message || Array.isArray(message) || message.topic !== topic) return;
+        const eventName = message.event;
+        const payload = message.payload ?? {};
         if (eventName === 'postgres_changes') {
           const data = payload?.data ?? payload;
-          const table = data?.table;
+          const table = data?.table ?? data?.record?.table;
           if (typeof table === 'string') onChange(table, data);
           return;
         }
         if (eventName === 'phx_reply' && payload?.status === 'ok') reconnectAttempt = 0;
         if (eventName === 'phx_reply' && payload?.status === 'error') scheduleReconnect();
+        if (eventName === 'phx_error' || eventName === 'phx_close') scheduleReconnect();
+        if (eventName === 'system' && payload?.status === 'error') scheduleReconnect();
       } catch {
-        // Ignore malformed frames; the database remains the source of truth.
+        // Ignore malformed frames; REST polling remains the fallback.
       }
-    });
+    };
 
-    socket.addEventListener('close', scheduleReconnect);
-    socket.addEventListener('error', scheduleReconnect);
+    current.onclose = () => {
+      if (socket === current) scheduleReconnect();
+    };
+    current.onerror = () => {
+      if (socket === current) scheduleReconnect();
+    };
   };
 
   connect();
   return () => {
     closed = true;
-    if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+    if (reconnectTimer !== undefined) {
+      window.clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+    }
     cleanupSocket();
   };
 }
