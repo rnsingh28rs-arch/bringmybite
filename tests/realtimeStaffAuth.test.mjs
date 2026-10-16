@@ -36,3 +36,21 @@ test('staff-only Realtime channels stop rather than reconnecting anonymously aft
   assert.ok(app.includes('{requireStaffAuth:true}'));
   assert.ok(alerts.includes('{ requireStaffAuth: true }'));
 });
+
+
+test('Realtime exposes explicit subscription status and does not call a socket open a live subscription', () => {
+  assert.match(realtime, /export type RealtimeStatus = 'connecting' \| 'subscribed' \| 'error' \| 'disconnected'/);
+  assert.match(realtime, /onStatus\?: \(status: RealtimeStatus, detail\?: string\) => void/);
+  assert.match(realtime, /joinTimeout = window\.setTimeout/);
+  assert.match(realtime, /Supabase did not acknowledge the live order subscription within 8 seconds/);
+  assert.match(realtime, /message\.ref === joinMessageRef/);
+  assert.match(realtime, /report\('subscribed', 'Supabase acknowledged the live order subscription\.'/);
+});
+
+test('Order request alerts display confirmed Realtime state while retaining REST polling fallback', () => {
+  const alerts = fs.readFileSync(new URL('../src/components/panels/OrderRequestAlerts.tsx', import.meta.url), 'utf8');
+  assert.match(alerts, /onStatus: \(status, detail\)/);
+  assert.match(alerts, /LIVE UPDATES CONNECTED/);
+  assert.match(alerts, /LIVE UPDATES RECONNECTING/);
+  assert.match(alerts, /setInterval\(\(\) => void refresh\(false\), ALERT_POLL_MS\)/);
+});
