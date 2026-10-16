@@ -2,7 +2,8 @@ import { getSupabaseRealtimeAccessToken, hasValidStaffSession } from './supabase
 
 type RealtimeTable = string;
 type RealtimeCallback = (table: string, payload: unknown) => void;
-type RealtimeOptions = { requireStaffAuth?: boolean };
+export type RealtimeStatus = 'connecting' | 'subscribed' | 'error' | 'disconnected';
+type RealtimeOptions = { requireStaffAuth?: boolean; onStatus?: (status: RealtimeStatus, detail?: string) => void };
 
 const projectUrl = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tknmdgeikmlsprqppukf.supabase.co').replace(/\/$/, '');
 const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_8aupeYk6D1q4c0T_EtzgtQ_rViMvNME';
@@ -17,18 +18,27 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
   let socket: WebSocket | null = null;
   let heartbeat: number | undefined;
   let reconnectTimer: number | undefined;
+  let joinTimeout: number | undefined;
+  let joinMessageRef = '';
+  let subscribed = false;
   let closed = false;
   let reconnectAttempt = 0;
   let ref = 0;
   let joinRef = '';
   let activeAccessToken = '';
   const topic = `realtime:public:portal-${Math.random().toString(36).slice(2)}`;
+  const report = (status: RealtimeStatus, detail?: string) => options.onStatus?.(status, detail);
 
   const cleanupSocket = () => {
     if (heartbeat !== undefined) {
       window.clearInterval(heartbeat);
       heartbeat = undefined;
     }
+    if (joinTimeout !== undefined) {
+      window.clearTimeout(joinTimeout);
+      joinTimeout = undefined;
+    }
+    subscribed = false;
     const previous = socket;
     socket = null;
     if (previous) {
@@ -40,8 +50,9 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
     }
   };
 
-  const scheduleReconnect = () => {
+  const scheduleReconnect = (detail = 'Realtime connection interrupted; reconnecting.') => {
     if (closed || reconnectTimer !== undefined) return;
+    report('error', detail);
     reconnectAttempt += 1;
     const delay = Math.min(30000, 1000 * 2 ** Math.min(reconnectAttempt - 1, 5));
     reconnectTimer = window.setTimeout(() => {
@@ -55,13 +66,15 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
     cleanupSocket();
     if (options.requireStaffAuth && !hasValidStaffSession()) {
       if (reconnectTimer !== undefined) { window.clearTimeout(reconnectTimer); reconnectTimer = undefined; }
+      report('disconnected', 'A valid staff session is required for live order updates.');
       return;
     }
+    report('connecting', 'Connecting to live order updates…');
     let current: WebSocket;
     try {
       current = new WebSocket(websocketUrl());
     } catch {
-      scheduleReconnect();
+      scheduleReconnect('Could not open the Realtime WebSocket; retrying.');
       return;
     }
     socket = current;
@@ -70,6 +83,7 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
 
     current.onopen = () => {
       if (socket !== current || current.readyState !== WebSocket.OPEN) return;
+      joinMessageRef = String(++ref);
       current.send(JSON.stringify({
         topic,
         event: 'phx_join',
@@ -81,9 +95,14 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
           },
           access_token: activeAccessToken
         },
-        ref: String(++ref),
+        ref: joinMessageRef,
         join_ref: joinRef
       }));
+      joinTimeout = window.setTimeout(() => {
+        if (socket === current && !subscribed) {
+          scheduleReconnect('Supabase did not acknowledge the live order subscription within 8 seconds.');
+        }
+      }, 8000);
 
       heartbeat = window.setInterval(() => {
         if (socket !== current || current.readyState !== WebSocket.OPEN) return;
@@ -113,20 +132,31 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
           if (typeof table === 'string') onChange(table, data);
           return;
         }
-        if (eventName === 'phx_reply' && payload?.status === 'ok') reconnectAttempt = 0;
-        if (eventName === 'phx_reply' && payload?.status === 'error') scheduleReconnect();
-        if (eventName === 'phx_error' || eventName === 'phx_close') scheduleReconnect();
-        if (eventName === 'system' && payload?.status === 'error') scheduleReconnect();
+        if (eventName === 'phx_reply' && message.ref === joinMessageRef) {
+          if (joinTimeout !== undefined) { window.clearTimeout(joinTimeout); joinTimeout = undefined; }
+          if (payload?.status === 'ok') {
+            subscribed = true;
+            reconnectAttempt = 0;
+            report('subscribed', 'Supabase acknowledged the live order subscription.');
+          } else {
+            const reason = payload?.response?.reason || payload?.response?.message || 'Supabase rejected the live order subscription.';
+            scheduleReconnect(String(reason));
+          }
+          return;
+        }
+        if (eventName === 'phx_reply' && payload?.status === 'error') scheduleReconnect('Supabase rejected a Realtime request.');
+        if (eventName === 'phx_error' || eventName === 'phx_close') scheduleReconnect('Supabase closed the Realtime subscription; retrying.');
+        if (eventName === 'system' && payload?.status === 'error') scheduleReconnect(String(payload?.message || 'Supabase reported a Realtime error.'));
       } catch {
         // Ignore malformed frames; REST polling remains the fallback.
       }
     };
 
     current.onclose = () => {
-      if (socket === current) scheduleReconnect();
+      if (socket === current) scheduleReconnect('Realtime WebSocket closed; reconnecting.');
     };
     current.onerror = () => {
-      if (socket === current) scheduleReconnect();
+      if (socket === current) scheduleReconnect('Realtime WebSocket error; reconnecting.');
     };
   };
 
@@ -135,6 +165,7 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
     if (!hasValidStaffSession()) {
       if (reconnectTimer !== undefined) { window.clearTimeout(reconnectTimer); reconnectTimer = undefined; }
       cleanupSocket();
+      report('disconnected', 'Live updates stopped because the staff session is no longer valid.');
       return;
     }
     connect();
@@ -150,5 +181,6 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
       reconnectTimer = undefined;
     }
     cleanupSocket();
+    report('disconnected', 'Live updates stopped.');
   };
 }
