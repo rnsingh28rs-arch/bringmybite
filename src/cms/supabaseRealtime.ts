@@ -53,6 +53,7 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
   const scheduleReconnect = (detail = 'Realtime connection interrupted; reconnecting.') => {
     if (closed || reconnectTimer !== undefined) return;
     report('error', detail);
+    cleanupSocket();
     reconnectAttempt += 1;
     const delay = Math.min(30000, 1000 * 2 ** Math.min(reconnectAttempt - 1, 5));
     reconnectTimer = window.setTimeout(() => {
