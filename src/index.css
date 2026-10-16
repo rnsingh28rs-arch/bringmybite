@@ -55,3 +55,29 @@
   width: max-content;
   animation: marquee 38s linear infinite;
 }
+
+/* Classic, smooth slide transition for the live home-page package carousel. */
+@keyframes classic-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+  }
+}
+
+.animate-classic-slide {
+  animation: classic-slide-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-classic-slide {
+    animation: none;
+    will-change: auto;
+  }
+}
