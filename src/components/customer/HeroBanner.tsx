@@ -259,7 +259,8 @@ export const HeroBanner: React.FC = () => {
 
             {/* Current Active Banner Card with Integrated Food Imagery */}
             <div
-              className="bg-white rounded-2xl border-2 border-[#E5DAC6] shadow-md overflow-hidden relative transition-all duration-300"
+              key={currentBanner.id}
+              className="animate-classic-slide bg-white rounded-2xl border-2 border-[#E5DAC6] shadow-md overflow-hidden relative transition-all duration-300"
               onMouseEnter={() => setIsAutoPlay(false)}
             >
               {/* Card Photo Banner Header */}
@@ -437,7 +438,7 @@ export const HeroBanner: React.FC = () => {
           <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
             
             {/* Visual Meal Tray Card with Real Thali Photo & 5CP Breakdown */}
-            <div className="relative rounded-3xl bg-linear-to-b from-[#124E33] to-[#0A2A1B] p-5 text-white shadow-xl border-4 border-[#C88A24]/40 overflow-hidden">
+            <div key={currentBanner.id} className="animate-classic-slide relative rounded-3xl bg-linear-to-b from-[#124E33] to-[#0A2A1B] p-5 text-white shadow-xl border-4 border-[#C88A24]/40 overflow-hidden">
               
               {/* Background Glow */}
               <div className="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-[#D99B26]/20 rounded-full blur-2xl pointer-events-none" />
