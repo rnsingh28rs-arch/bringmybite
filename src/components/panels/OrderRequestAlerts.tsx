@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BellRing, CheckCircle2, Clock3, XCircle } from 'lucide-react';
 import { getStoredOrders, StoredOrder, updateStoredOrder } from '../../utils/orderStore';
-import { subscribeToSupabaseChanges } from '../../cms/supabaseRealtime';
+import { RealtimeStatus, subscribeToSupabaseChanges } from '../../cms/supabaseRealtime';
 import { formatNewOrderAlert, getNewOrders } from '../../utils/orderAlerts.mjs';
 
 const ALERT_POLL_MS = 3000;
@@ -14,6 +14,8 @@ export const OrderRequestAlerts: React.FC = () => {
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState('');
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('connecting');
+  const [realtimeDetail, setRealtimeDetail] = useState('Connecting to live order updates…');
 
   const enableAlerts = async () => {
     try {
@@ -82,7 +84,13 @@ export const OrderRequestAlerts: React.FC = () => {
     window.addEventListener('bmb-order-request-change', onChange);
     window.addEventListener('storage', onChange);
     window.addEventListener('focus', onFocus);
-    const unsubscribeRealtime = subscribeToSupabaseChanges(['bmb_orders'], () => { void refresh(false); }, { requireStaffAuth: true });
+    const unsubscribeRealtime = subscribeToSupabaseChanges(['bmb_orders'], () => { void refresh(false); }, {
+      requireStaffAuth: true,
+      onStatus: (status, detail) => {
+        setRealtimeStatus(status);
+        setRealtimeDetail(detail || '');
+      }
+    });
     const timer = window.setInterval(() => void refresh(false), ALERT_POLL_MS);
     return () => { unsubscribeRealtime(); window.removeEventListener('bmb-order-request-change', onChange); window.removeEventListener('storage', onChange); window.removeEventListener('focus', onFocus); window.clearInterval(timer); window.speechSynthesis?.cancel(); audioContextRef.current?.close().catch(() => undefined); };
   }, [alertsEnabled]);
@@ -90,7 +98,7 @@ export const OrderRequestAlerts: React.FC = () => {
   return <>
     {loadError && <div role="alert" className="mx-1 mb-3 rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800">Order loading failed: {loadError}</div>}
     <div className="sticky top-2 z-[100] mx-1 mb-3 flex items-center justify-between gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2 shadow-md">
-      <div className="flex items-center gap-2"><BellRing className="w-5 h-5 text-amber-700" /><div><div className="text-xs font-black text-amber-900">{pendingOrders.length ? `${pendingOrders.length} NEW ORDER${pendingOrders.length > 1 ? 'S' : ''} WAITING` : 'No pending orders'}</div><div className="text-[9px] text-amber-800">Pending orders remain here until accepted or declined.</div></div></div>
+      <div className="flex items-center gap-2"><BellRing className="w-5 h-5 text-amber-700" /><div><div className="text-xs font-black text-amber-900">{pendingOrders.length ? `${pendingOrders.length} NEW ORDER${pendingOrders.length > 1 ? 'S' : ''} WAITING` : 'No pending orders'}</div><div className="text-[9px] text-amber-800">Pending orders remain here until accepted or declined.</div><div className={`mt-1 flex items-center gap-1 text-[9px] font-bold ${realtimeStatus === 'subscribed' ? 'text-emerald-800' : realtimeStatus === 'error' ? 'text-rose-700' : 'text-amber-800'}`}><span className={`inline-block h-1.5 w-1.5 rounded-full ${realtimeStatus === 'subscribed' ? 'bg-emerald-600' : realtimeStatus === 'error' ? 'bg-rose-600' : 'bg-amber-500'}`} />{realtimeStatus === 'subscribed' ? 'LIVE UPDATES CONNECTED' : realtimeStatus === 'error' ? 'LIVE UPDATES RECONNECTING' : realtimeStatus === 'disconnected' ? 'LIVE UPDATES PAUSED' : 'CONNECTING LIVE UPDATES'}{realtimeDetail && <span className="font-normal">— {realtimeDetail}</span>}</div></div></div>
       <button type="button" onClick={enableAlerts} className={`shrink-0 rounded-xl px-3 py-2 text-[10px] font-black border ${alertsEnabled ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-amber-400 text-black border-amber-500'}`}>{alertsEnabled ? '🔔 On' : '🔔 Enable'}</button>
     </div>
     {pendingOrders.length > 0 && <div className="space-y-3 mb-4">{pendingOrders.map(order => <div key={order.id} className="rounded-2xl border-2 border-amber-400 bg-white p-4 shadow-lg"><div className="flex items-start justify-between gap-3"><div><div className="text-[10px] font-black uppercase tracking-widest text-amber-700">🔔 New Order Request</div><div className="mt-1 text-lg font-black text-[#124E33]">{order.customerName || 'Customer'}</div><div className="text-xs font-bold">Order: {order.id}</div><div className="text-xs font-bold">{order.planOrMeal} • ₹{Number(order.amount || 0).toLocaleString('en-IN')}</div><div className="mt-2 flex items-center gap-1 text-[10px] text-gray-500"><Clock3 className="w-3 h-3" /> Waiting for approval</div></div></div><div className="mt-4 grid grid-cols-2 gap-2"><button type="button" disabled={busyId === order.id} onClick={() => void handleStatus(order, 'Approved')} className="rounded-xl bg-[#124E33] py-3 text-xs font-black text-white disabled:opacity-50 flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" /> ACCEPT ORDER</button><button type="button" disabled={busyId === order.id} onClick={() => void handleStatus(order, 'Declined')} className="rounded-xl border-2 border-rose-200 bg-rose-50 py-3 text-xs font-black text-rose-800 disabled:opacity-50 flex items-center justify-center gap-1"><XCircle className="w-4 h-4" /> DECLINE</button></div><div className="mt-2 text-[9px] text-gray-400">{formatNewOrderAlert(order)}</div></div>)}</div>}
