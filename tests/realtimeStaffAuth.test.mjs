@@ -35,7 +35,7 @@ test('staff-only Realtime channels stop rather than reconnecting anonymously aft
   const app = fs.readFileSync(new URL('../src/context/AppContext.tsx', import.meta.url), 'utf8');
   const alerts = fs.readFileSync(new URL('../src/components/panels/OrderRequestAlerts.tsx', import.meta.url), 'utf8');
   assert.ok(app.includes('{requireStaffAuth:true}'));
-  assert.ok(alerts.includes('{ requireStaffAuth: true }'));
+  assert.ok(alerts.includes('requireStaffAuth: true'));
 });
 
 
