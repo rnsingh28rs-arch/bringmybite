@@ -13,7 +13,7 @@ test('Realtime uses the current authenticated staff access token instead of the 
 
 test('Realtime reconnects when the staff access token rotates after session refresh', () => {
   assert.match(realtime, /getSupabaseRealtimeAccessToken\(\) !== activeAccessToken/);
-  assert.match(realtime, /message\\.ref === joinMessageRef/);
+  assert.match(realtime, /message\.ref === joinMessageRef/);
   assert.match(realtime, /reconnectAttempt = 0/);
 });
 
