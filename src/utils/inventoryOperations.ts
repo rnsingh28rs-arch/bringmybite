@@ -1,4 +1,4 @@
-import { supabaseRpc } from '../cms/supabaseRest';
+import { supabaseRpc, supabaseSelect } from '../cms/supabaseRest';
 import { convertRecipeQuantity } from './inventoryUnits.mjs';
 export { convertRecipeQuantity, normalizeInventoryUnit } from './inventoryUnits.mjs';
 
