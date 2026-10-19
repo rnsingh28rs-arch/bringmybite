@@ -25,6 +25,9 @@ BEGIN
   IF NOT public.bmb_has_staff_permission('inventory','add') THEN
     RAISE EXCEPTION 'You do not have permission to add inventory items';
   END IF;
+  IF NOT public.bmb_has_staff_permission('inventory','write') THEN
+    RAISE EXCEPTION 'You do not have permission to record an opening stock balance';
+  END IF;
   IF p_opening_quantity IS NULL OR p_opening_quantity < 0 THEN
     RAISE EXCEPTION 'Opening quantity must be zero or greater';
   END IF;
