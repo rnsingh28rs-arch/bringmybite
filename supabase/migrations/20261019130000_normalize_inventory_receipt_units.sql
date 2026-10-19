@@ -26,6 +26,9 @@ BEGIN
   SELECT * INTO v_indent FROM public.bmb_chef_indents
   WHERE id=p_indent_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Purchase indent not found'; END IF;
+  IF v_indent.status NOT IN ('Approved','Ordered','Purchased') THEN
+    RAISE EXCEPTION 'Only an approved, active purchase can be received';
+  END IF;
   IF v_indent.payment_status <> 'Approved' THEN
     RAISE EXCEPTION 'Admin payment approval is required before receiving stock';
   END IF;
