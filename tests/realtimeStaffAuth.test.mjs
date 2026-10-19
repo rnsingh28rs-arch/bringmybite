@@ -7,7 +7,7 @@ const realtime = fs.readFileSync(new URL('../src/cms/supabaseRealtime.ts', impor
 
 test('Realtime uses the current authenticated staff access token instead of the publishable key', () => {
   assert.match(rest, /export const getSupabaseRealtimeAccessToken\s*=\s*\(\)\s*=>\s*getStaffAccessToken\(\)\s*\|\|\s*config\.anonKey/);
-  assert.match(realtime, /import \{ getSupabaseRealtimeAccessToken, hasValidStaffSession \} from '\.\/supabaseRest'/);
+  assert.match(realtime, /import \{ getSupabaseRealtimeAccessToken, getSupabaseUrl, getSupabasePublishableKey, hasValidStaffSession, isSupabaseConfigured \} from '\.\/supabaseRest'/);
   assert.match(realtime, /access_token:\s*activeAccessToken/);
 });
 
