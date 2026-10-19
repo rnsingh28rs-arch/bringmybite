@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { supabaseInsert, supabasePatch, supabaseSelect, supabaseRpc } from '../../cms/supabaseRest';
 import { calculateLineTotal, buildPaymentRequest, paymentStatusLabel } from '../../utils/inventoryPaymentApproval.mjs';
 import { recordApprovedInventoryPurchaseReceipt } from '../../utils/inventoryOperations';
+import { normalizeInventoryUnit } from '../../utils/inventoryUnits.mjs';
 import { Check, X, Send, IndianRupee, PackageCheck, RefreshCw } from 'lucide-react';
 
 type Mode = 'manager' | 'admin';
@@ -14,7 +15,7 @@ const money=(value:number)=>`₹${Number(value||0).toLocaleString('en-IN',{minim
 const normalizedName=(value:string)=>String(value||'').normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
 const findInventoryMatch=(items:any[],name:string,unit:string)=>{
   const named=items.filter(item=>normalizedName(item.name)===normalizedName(name));
-  const matches=named.filter(item=>String(item.unit||'').trim().toLowerCase()===String(unit||'').trim().toLowerCase());
+  const matches=named.filter(item=>normalizeInventoryUnit(item.unit)===normalizeInventoryUnit(unit));
   if(named.length>0&&matches.length===0) throw new Error(`Unit mismatch for ${name}: purchase unit is ${unit}. Check the existing inventory unit before receiving stock.`);
   const stocked=matches.filter(item=>Number(item.currentStock||0)>0);
   if(stocked.length>1) throw new Error(`Multiple stocked inventory rows match ${name} (${unit}). Resolve duplicate inventory rows before receiving this purchase.`);
