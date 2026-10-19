@@ -7,6 +7,9 @@ test('payment card exposes app-specific UPI payment choices with dynamic amount'
   assert.match(source, /Google Pay/);
   assert.match(source, /PhonePe/);
   assert.match(source, /Paytm/);
-  assert.match(source, /getUpiPaymentUrl/);
+  assert.match(source, /getUpiPaymentUrl\(payableAmount, orderReference, payment\)/);
+  assert.match(source, /getQrCodeUrl\(payableAmount, orderReference, payment\)/);
+  assert.match(source, /payment\.accountNumber&&/);
+  assert.match(source, /payment\.ifscCode&&/);
   assert.match(source, /amount/);
 });
