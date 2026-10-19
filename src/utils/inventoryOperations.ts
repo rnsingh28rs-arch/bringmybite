@@ -1,4 +1,6 @@
 import { supabaseRpc } from '../cms/supabaseRest';
+import { convertRecipeQuantity } from './inventoryUnits.mjs';
+export { convertRecipeQuantity } from './inventoryUnits.mjs';
 
 export const recordInventoryReceipt = (
   inventoryId:string,
@@ -51,9 +53,3 @@ export const recordInventoryAdjustment = (
   p_source:source
 });
 
-export function convertRecipeQuantity(quantity:number, fromUnit:string, toUnit:string){
- const f=fromUnit.toLowerCase(),t=toUnit.toLowerCase(); if(f===t)return quantity;
- if(f==='grams'&&t==='kg')return quantity/1000; if(f==='kg'&&t==='grams')return quantity*1000;
- if(f==='liters'&&t==='litres')return quantity; if(f==='litres'&&t==='liters')return quantity;
- return null;
-}
