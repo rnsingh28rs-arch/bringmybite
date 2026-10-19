@@ -10,7 +10,7 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf
 test('manager stock panel routes open purchases through the approved receipt tab', () => {
   const manager = read('src/components/panels/ManagerStockPanel.tsx');
   assert.match(manager, /InventoryPaymentApprovalPanel mode="manager"/);
-  assert.match(manager, /disabled=\{ordered>0\}/);
+  assert.match(manager, /disabled=\{ordered>0(?:\|\|Boolean\(movementBusy\[i\.id\]\))?\}/);
   assert.match(manager, /Use Purchase &amp; Receipts|Use Purchase & Receipts/);
 });
 
