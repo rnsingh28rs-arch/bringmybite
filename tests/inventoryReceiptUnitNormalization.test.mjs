@@ -12,6 +12,7 @@ test('purchase receipt compares canonical units and does not treat grams as kilo
   assert.match(migration, /bmb_normalize_inventory_unit\(v_indent\.unit\)/);
   assert.match(migration, /bmb_normalize_inventory_unit\(v_item\.unit\)/);
   assert.match(migration, /bmb_record_inventory_movement/);
+  assert.match(migration, /Only an approved, active purchase can be received/);
   assert.match(migration, /Admin payment approval is required before receiving stock/);
   assert.match(migration, /v_total_received > v_indent\.quantity_needed/);
 });
