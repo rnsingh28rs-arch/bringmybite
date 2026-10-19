@@ -6,6 +6,7 @@ export type RealtimeStatus = 'connecting' | 'subscribed' | 'error' | 'disconnect
 type RealtimeOptions = { requireStaffAuth?: boolean; onStatus?: (status: RealtimeStatus, detail?: string) => void };
 
 
+
 const projectUrl = getSupabaseUrl();
 const anonKey = getSupabasePublishableKey();
 
@@ -65,6 +66,10 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
 
   const connect = () => {
     if (closed) return;
+    if (!isSupabaseConfigured) {
+      report('disconnected', 'Supabase environment variables are not configured.');
+      return;
+    }
     if (!isSupabaseConfigured) {
       report('disconnected', 'Supabase environment variables are not configured.');
       return;
