@@ -20,10 +20,10 @@ test('purchase submission, payment approval, rejection and stock receipt use ato
   assert.match(panel, /bmb_submit_inventory_purchase_request/);
   assert.match(panel, /bmb_approve_inventory_purchase_payment/);
   assert.match(panel, /bmb_reject_inventory_purchase_payment/);
-  assert.match(panel, /recordApprovedInventoryPurchaseReceipt/);
+  assert.match(panel, /recordApprovedInventoryPurchaseWithGrn/);
   assert.match(operations, /bmb_receive_inventory_purchase/);
-  assert.match(panel, /Admin payment approval is required before receiving this stock/);
-  assert.match(panel, /alreadyReceived\+qty>ordered/);
+  assert.match(read('src/components/panels/ReceiptPreview.tsx'), /Admin payment approval is required before receiving stock/);
+  assert.match(read('supabase/migrations/20261019150000_persist_inventory_grn_receipts.sql'), /v_total_received>v_indent\\.quantity_needed/);
 });
 
 test('staff routes require Supabase authentication and refresh expiring sessions', () => {
