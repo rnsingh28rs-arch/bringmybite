@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { supabaseInsert, supabasePatch, supabaseSelect, supabaseRpc } from '../../cms/supabaseRest';
+import { supabasePatch, supabaseSelect, supabaseRpc } from '../../cms/supabaseRest';
 import { calculateLineTotal, buildPaymentRequest, paymentStatusLabel } from '../../utils/inventoryPaymentApproval.mjs';
-import { recordApprovedInventoryPurchaseReceipt } from '../../utils/inventoryOperations';
+import { createInventoryIdempotencyKey, recordApprovedInventoryPurchaseReceipt } from '../../utils/inventoryOperations';
 import { normalizeInventoryUnit } from '../../utils/inventoryUnits.mjs';
 import { Check, X, Send, IndianRupee, PackageCheck, RefreshCw } from 'lucide-react';
 
@@ -28,6 +28,7 @@ export const InventoryPaymentApprovalPanel: React.FC<{ mode:Mode }> = ({ mode })
   const [lines,setLines]=useState<PurchaseLine[]>([]);
   const [prices,setPrices]=useState<Record<string,string>>({});
   const [received,setReceived]=useState<Record<string,string>>({});
+  const [receiptKeys,setReceiptKeys]=useState<Record<string,{fingerprint:string;key:string}>>({});
   const [notes,setNotes]=useState<Record<string,string>>({});
   const [message,setMessage]=useState('');
   const [busy,setBusy]=useState<string>('');
@@ -82,17 +83,38 @@ export const InventoryPaymentApprovalPanel: React.FC<{ mode:Mode }> = ({ mode })
     setBusy(indent.id);
     try{
       let matched=findInventoryMatch(inventory,indent.itemName,indent.unit);
+      if(!matched){
+        // Re-read central inventory before creating a row; the previous receipt attempt may
+        // have created the zero-stock item before its receipt request lost connectivity.
+        const freshRows=await supabaseSelect<any>('bmb_inventory','select=id,name,unit,current_stock&order=name.asc');
+        matched=findInventoryMatch(freshRows.map((row:any)=>({...row,currentStock:Number(row.current_stock||0)})),indent.itemName,indent.unit);
+      }
       let inventoryId=matched?.id;
       if(!inventoryId){
         inventoryId=`INV-${Date.now()}`;
-        await supabaseInsert('bmb_inventory',{id:inventoryId,name:String(indent.itemName).trim(),category:/rice|atta|dal|flour|grain|pulse/i.test(indent.itemName)?'Grains & Pulses':/oil|masala|spice|salt|sugar/i.test(indent.itemName)?'Spices & Oils':/chicken|egg|paneer|milk|poultry/i.test(indent.itemName)?'Dairy & Poultry':'Fresh Vegetables',current_stock:0,unit:indent.unit,min_threshold:0,cost_per_unit:Number(indent.purchasePrice),supplier:'',last_restocked:null,status:'Critical',updated_at:new Date().toISOString()});
+        await supabaseRpc('bmb_create_inventory_item_with_opening_balance',{
+          p_id:inventoryId,
+          p_name:String(indent.itemName).trim(),
+          p_category:/rice|atta|dal|flour|grain|pulse/i.test(indent.itemName)?'Grains & Pulses':/oil|masala|spice|salt|sugar/i.test(indent.itemName)?'Spices & Oils':/chicken|egg|paneer|milk|poultry/i.test(indent.itemName)?'Dairy & Poultry':'Fresh Vegetables',
+          p_opening_quantity:0,
+          p_unit:indent.unit,
+          p_min_threshold:0,
+          p_cost_per_unit:Number(indent.purchasePrice),
+          p_supplier:'',
+          p_last_restocked:null
+        });
       }else{
         await supabasePatch('bmb_inventory',`id=eq.${encodeURIComponent(inventoryId)}`,{cost_per_unit:Number(indent.purchasePrice),updated_at:new Date().toISOString()});
       }
-      const result=await recordApprovedInventoryPurchaseReceipt(indent.id,inventoryId,qty);
+      const fingerprint=`${inventoryId}|${qty}`;
+      const previousKey=receiptKeys[indent.id];
+      const idempotencyKey=previousKey?.fingerprint===fingerprint?previousKey.key:createInventoryIdempotencyKey('purchase-receipt');
+      setReceiptKeys(prev=>({...prev,[indent.id]:{fingerprint,key:idempotencyKey}}));
+      const result=await recordApprovedInventoryPurchaseReceipt(indent.id,inventoryId,qty,idempotencyKey);
       const saved=Array.isArray(result)?result[0]:result;
       const total=Number(saved?.received_quantity??(alreadyReceived+qty));
       const balance=Number(saved?.current_stock);
+      setReceiptKeys(prev=>{const next={...prev};delete next[indent.id];return next;});
       flash(`${indent.itemName}: received ${qty} ${indent.unit}; total received ${total}/${ordered} ${indent.unit}; current stock ${Number.isFinite(balance)?balance:'updated'} ${indent.unit}.`);
       window.location.reload();
     }catch(e){flash(e instanceof Error?e.message:'Receipt update failed.');}
