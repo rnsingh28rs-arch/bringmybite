@@ -54,3 +54,4 @@ export const InventoryLedgerPanel:React.FC=()=>{
       </tbody></table>
     </div>
   </div>;
+};
