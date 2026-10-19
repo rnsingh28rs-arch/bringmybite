@@ -25,3 +25,14 @@ test('receipt preview exposes an explicit record action rather than print-only b
   assert.match(preview, /Record Receipt & Save GRN/);
   assert.match(manager, /recordApprovedInventoryPurchaseWithGrn/);
 });
+
+test('staff inventory panels expose the central movement and GRN history', () => {
+  const ledger = read('src/components/panels/InventoryLedgerPanel.tsx');
+  const admin = read('src/components/panels/AdminPanel.tsx');
+  assert.match(ledger, /bmb_inventory_movements/);
+  assert.match(ledger, /bmb_inventory_receipts/);
+  assert.match(ledger, /quantity_delta/);
+  assert.match(ledger, /balance_after/);
+  assert.match(admin, /InventoryLedgerPanel/);
+  assert.match(manager, /Ledger & GRNs/);
+});
