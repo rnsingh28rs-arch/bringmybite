@@ -29,3 +29,15 @@ test('purchase receipt retry returns the existing result without adding stock tw
   assert.match(migration, /Idempotency key was already used for a different receipt/);
   assert.match(migration, /v_total_received>v_indent\.quantity_needed/);
 });
+
+test('receipt and cooking UI reuse operation keys after a failed response', () => {
+  const receipt = read('src/components/panels/InventoryPaymentApprovalPanel.tsx');
+  const cooking = read('src/components/panels/ChefKitchenPanel.tsx');
+  const manager = read('src/components/panels/ManagerStockPanel.tsx');
+  assert.match(receipt, /receiptKeys\[indent\.id\]/);
+  assert.match(receipt, /recordApprovedInventoryPurchaseReceipt\(indent\.id,inventoryId,qty,idempotencyKey\)/);
+  assert.match(cooking, /consumptionKey\?\.fingerprint===fingerprint/);
+  assert.match(cooking, /disabled=\{consuming\}/);
+  assert.match(manager, /movementKey\('manager-receipt'/);
+  assert.match(manager, /movementKey\('manager-adjustment'/);
+});
