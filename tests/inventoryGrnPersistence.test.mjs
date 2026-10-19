@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
+const read = relativePath => fs.readFileSync(new URL('../' + relativePath, import.meta.url), 'utf8');
 const migration = fs.readFileSync(new URL('../supabase/migrations/20261019150000_persist_inventory_grn_receipts.sql', import.meta.url), 'utf8');
 const preview = fs.readFileSync(new URL('../src/components/panels/ReceiptPreview.tsx', import.meta.url), 'utf8');
 const manager = fs.readFileSync(new URL('../src/components/panels/ManagerStockPanel.tsx', import.meta.url), 'utf8');
