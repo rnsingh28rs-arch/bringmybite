@@ -31,11 +31,12 @@ test('purchase receipt retry returns the existing result without adding stock tw
 });
 
 test('receipt and cooking UI reuse operation keys after a failed response', () => {
-  const receipt = read('src/components/panels/InventoryPaymentApprovalPanel.tsx');
+  const receipt = read('src/components/panels/ReceiptPreview.tsx');
+  const purchasePanel = read('src/components/panels/InventoryPaymentApprovalPanel.tsx');
   const cooking = read('src/components/panels/ChefKitchenPanel.tsx');
   const manager = read('src/components/panels/ManagerStockPanel.tsx');
   assert.match(receipt, /requestKey.*fingerprint===fingerprint/);
-  assert.match(receipt, /recordApprovedInventoryPurchaseWithGrn/);
+  assert.match(purchasePanel, /recordApprovedInventoryPurchaseWithGrn/);
   assert.match(cooking, /consumptionKey\?\.fingerprint===fingerprint/);
   assert.match(cooking, /disabled=\{consuming\}/);
   assert.match(manager, /movementKey\('manager-receipt'/);
