@@ -1,12 +1,13 @@
-import { getSupabaseRealtimeAccessToken, hasValidStaffSession } from './supabaseRest';
+import { getSupabaseRealtimeAccessToken, getSupabaseUrl, getSupabasePublishableKey, hasValidStaffSession, isSupabaseConfigured } from './supabaseRest';
 
 type RealtimeTable = string;
 type RealtimeCallback = (table: string, payload: unknown) => void;
 export type RealtimeStatus = 'connecting' | 'subscribed' | 'error' | 'disconnected';
 type RealtimeOptions = { requireStaffAuth?: boolean; onStatus?: (status: RealtimeStatus, detail?: string) => void };
 
-const projectUrl = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tknmdgeikmlsprqppukf.supabase.co').replace(/\/$/, '');
-const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_8aupeYk6D1q4c0T_EtzgtQ_rViMvNME';
+
+const projectUrl = getSupabaseUrl();
+const anonKey = getSupabasePublishableKey();
 
 // Supabase's live Realtime logs report the V1 serializer ("expected a map").
 // Use the V1 object-frame protocol explicitly rather than sending V2 arrays.
@@ -64,6 +65,10 @@ export function subscribeToSupabaseChanges(tables: RealtimeTable[], onChange: Re
 
   const connect = () => {
     if (closed) return;
+    if (!isSupabaseConfigured) {
+      report('disconnected', 'Supabase environment variables are not configured.');
+      return;
+    }
     cleanupSocket();
     if (options.requireStaffAuth && !hasValidStaffSession()) {
       if (reconnectTimer !== undefined) { window.clearTimeout(reconnectTimer); reconnectTimer = undefined; }
