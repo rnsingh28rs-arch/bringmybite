@@ -20,7 +20,7 @@ test('stock receipt and GRN metadata are handled in the same database transactio
   assert.match(migration, /Idempotency key was already used for a different GRN receipt/);
   assert.match(migration, /A receipt idempotency key and GRN number are required/);
   assert.match(migration, /GRN unit cost must match the Admin-approved purchase price/);
-  assert.match(migration, /100\\+p_tax_rate/);
+  assert.match(migration, /100.p_tax_rate/);
 });
 
 test('receipt preview exposes an explicit record action rather than print-only behaviour', () => {
