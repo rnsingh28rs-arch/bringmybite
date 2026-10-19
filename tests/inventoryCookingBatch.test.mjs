@@ -18,5 +18,6 @@ test('Chef can explicitly record actual cooked trays from saved recipe standards
   assert.match(chef, /bmb_consume_inventory_batch/);
   assert.match(chef, /Actual trays cooked/);
   assert.match(chef, /Only saved recipe standards are used/);
+  assert.match(chef, /Configure the menu for this day/);
   assert.match(chef, /createInventoryIdempotencyKey\('cooking-batch'\)/);
 });
