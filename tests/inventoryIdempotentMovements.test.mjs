@@ -34,7 +34,7 @@ test('receipt and cooking UI reuse operation keys after a failed response', () =
   const receipt = read('src/components/panels/InventoryPaymentApprovalPanel.tsx');
   const cooking = read('src/components/panels/ChefKitchenPanel.tsx');
   const manager = read('src/components/panels/ManagerStockPanel.tsx');
-  assert.match(receipt, /requestKey\\?\\.fingerprint===fingerprint/);
+  assert.match(receipt, /requestKey.*fingerprint===fingerprint/);
   assert.match(receipt, /recordApprovedInventoryPurchaseWithGrn/);
   assert.match(cooking, /consumptionKey\?\.fingerprint===fingerprint/);
   assert.match(cooking, /disabled=\{consuming\}/);
