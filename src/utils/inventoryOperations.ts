@@ -1,6 +1,6 @@
 import { supabaseRpc, supabaseSelect } from '../cms/supabaseRest';
-import { convertRecipeQuantity } from './inventoryUnits.mjs';
-export { convertRecipeQuantity, normalizeInventoryUnit } from './inventoryUnits.mjs';
+import { convertRecipeQuantity, normalizeInventoryUnit } from './inventoryUnits.mjs';
+export { convertRecipeQuantity, normalizeInventoryUnit };
 
 export function createInventoryIdempotencyKey(prefix='inventory') {
   const token = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
