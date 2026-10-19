@@ -131,14 +131,14 @@ export const NativeAppDownloadModal: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold font-serif-title tracking-wide text-[#F2C94C]">
-                  Bring My Bite Native Mobile Apps
+                  Bring My Bite Mobile Setup
                 </h2>
                 <span className="text-[10px] bg-emerald-700 text-white font-extrabold px-2 py-0.5 rounded-full uppercase">
                   iOS & Android
                 </span>
               </div>
               <p className="text-xs text-emerald-200 mt-0.5">
-                Install on iPhone, Android, or build native binaries with Capacitor & PWA
+                Install the PWA now; native app ZIPs are starter scaffolds, not installable APK/IPA builds.
               </p>
             </div>
           </div>
@@ -227,7 +227,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                   </h3>
                 </div>
                 <p className="text-xs text-emerald-200">
-                  Download individual archives for website frontend or platform-specific mobile apps, or the complete master zip archive.
+                  Download setup templates and notes. These ZIPs are not complete production source bundles or installable Android/iOS binaries.
                 </p>
               </div>
 
@@ -265,7 +265,7 @@ export const NativeAppDownloadModal: React.FC = () => {
               {/* Individual Bifurcated Zips Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 
-                {/* 1. Website Code Zip */}
+                {/* 1. Website Starter Template */}
                 <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between space-y-3">
                   <div>
                     <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-800 flex items-center justify-center mb-2">
@@ -275,7 +275,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                       Website Source Code
                     </h4>
                     <p className="text-[11px] text-gray-500 font-mono mt-0.5">
-                      website_code.zip
+                      website_starter_template.zip
                     </p>
                     <p className="text-xs text-gray-600 mt-2">
                       Full responsive React 18, Vite, Tailwind CSS web platform with Admin, Manager, Chef, and Customer portals.
@@ -296,7 +296,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                   </button>
                 </div>
 
-                {/* 2. Android Application Zip */}
+                {/* 2. Android Starter Template */}
                 <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between space-y-3">
                   <div>
                     <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center mb-2">
@@ -306,7 +306,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                       Android Native App Code
                     </h4>
                     <p className="text-[11px] text-gray-500 font-mono mt-0.5">
-                      application_android.zip
+                      application_android_starter.zip
                     </p>
                     <p className="text-xs text-gray-600 mt-2">
                       Inside <code className="font-mono bg-gray-100 px-1 rounded text-[11px]">application/android/</code> with AndroidManifest, build.gradle, Capacitor bridge & assets.
@@ -327,7 +327,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                   </button>
                 </div>
 
-                {/* 3. iOS Application Zip */}
+                {/* 3. iOS Starter Template */}
                 <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between space-y-3">
                   <div>
                     <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-900 flex items-center justify-center mb-2">
@@ -337,7 +337,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                       iOS Native App Code
                     </h4>
                     <p className="text-[11px] text-gray-500 font-mono mt-0.5">
-                      application_ios.zip
+                      application_ios_starter.zip
                     </p>
                     <p className="text-xs text-gray-600 mt-2">
                       Inside <code className="font-mono bg-gray-100 px-1 rounded text-[11px]">application/ios/</code> with Info.plist, AppDelegate.swift, Podfile, Capacitor bridge & assets.
@@ -436,7 +436,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Terminal className="w-4 h-4 text-[#F2C94C]" />
-                    <h3 className="text-sm font-bold text-[#F2C94C] font-mono">1-Click Android Studio & APK Build</h3>
+                    <h3 className="text-sm font-bold text-[#F2C94C] font-mono">Android Studio Setup Notes</h3>
                   </div>
                   <button
                     onClick={() => handleCopy('npm install @capacitor/core @capacitor/cli @capacitor/android\nnpx cap add android\nnpx cap sync\nnpx cap open android', 'android-cli')}
@@ -521,7 +521,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Terminal className="w-4 h-4 text-[#F2C94C]" />
-                    <h3 className="text-sm font-bold text-[#F2C94C] font-mono">1-Click Xcode & iOS IPA Build</h3>
+                    <h3 className="text-sm font-bold text-[#F2C94C] font-mono">Xcode Setup Notes</h3>
                   </div>
                   <button
                     onClick={() => handleCopy('npm install @capacitor/core @capacitor/cli @capacitor/ios\nnpx cap add ios\nnpx cap sync\nnpx cap open ios', 'ios-cli')}
