@@ -106,30 +106,19 @@ export default defineConfig({
   }
 });`;
 
-  const readmeWebsite = `# Bring My Bite - Homely Tiffin & Mess Service
+  const readmeWebsite = `# Bring My Bite — Website Starter Template
 
-## Quick Start
-1. Install dependencies:
-\`\`\`bash
-npm install
-\`\`\`
+This ZIP is a **starter template**, not the complete Bring My Bite website source. It does not include the full src/ tree or all production assets, so it cannot run as the production portal by itself. Use the complete repository for the full application.
 
-2. Start development server:
-\`\`\`bash
-npm run dev
-\`\`\`
-Visit http://localhost:3000
-
-3. Build for production:
-\`\`\`bash
-npm run build
-\`\`\`
+## Template setup notes
+1. Add the complete project source and install its dependencies.
+2. Run the development server using the repository's npm scripts.
+3. Build and test the complete project before deployment.
 
 ## Payment Configuration
-Payment and banking details are managed in the authenticated CMS and the restricted public payment view. This downloadable starter archive intentionally contains no real bank account number, IFSC code, or private payment configuration. Configure payment settings only in the target environment.
-`;
+Payment and banking details are managed in the authenticated CMS and the restricted public payment view. This archive intentionally contains no real bank account number, IFSC code, or private payment configuration. Configure payment settings only in the target environment.`;
 
-  const readmeAndroid = `# Bring My Bite — Android Starter Template
+const readmeAndroid = `# Bring My Bite — Android Starter Template
 
 This archive contains reference configuration and sample native files only. It is **not** a complete Android Studio project, does not include the full website source, and is not an APK or AAB.
 
