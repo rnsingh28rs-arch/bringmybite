@@ -12,10 +12,10 @@ export interface BankDetails {
 export const OFFICIAL_BANK_DETAILS: BankDetails = {
   bankName: 'Axis Bank',
   accountHolder: 'QUALITY PAN',
-  accountNumber: '922020048876624',
-  ifscCode: 'UTIB0000624',
-  accountType: 'CAA',
-  authorizedSignatory: 'Rahul Narendra Singh',
+  accountNumber: '',
+  ifscCode: '',
+  accountType: '',
+  authorizedSignatory: '',
   upiId: '9004848984@AXISBANK',
   phone: '+91 9315075165'
 };
