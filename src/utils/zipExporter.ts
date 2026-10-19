@@ -129,41 +129,33 @@ npm run build
 Payment and banking details are managed in the authenticated CMS and the restricted public payment view. This downloadable starter archive intentionally contains no real bank account number, IFSC code, or private payment configuration. Configure payment settings only in the target environment.
 `;
 
-  const readmeAndroid = `# Bring My Bite - Android Application
+  const readmeAndroid = `# Bring My Bite — Android Starter Template
 
-## Build APK / Android Studio
-1. Install Capacitor CLI:
-\`\`\`bash
-npm install -g @capacitor/cli @capacitor/android
-npx cap add android
-\`\`\`
+This archive contains reference configuration and sample native files only. It is **not** a complete Android Studio project, does not include the full website source, and is not an APK or AAB.
 
-2. Build and sync:
-\`\`\`bash
-npm run build
-npx cap sync android
-npx cap open android
-\`\`\`
-3. In Android Studio: **Build > Build Bundle(s) / APK(s) > Build APK**.
-`;
+To build a real app, start from the complete Bring My Bite repository, install its dependencies, build the web app, then generate the native project with Capacitor:
+1. npm install
+2. npm run build
+3. npm install @capacitor/core @capacitor/cli @capacitor/android
+4. npx cap add android
+5. npx cap sync android
+6. npx cap open android
 
-  const readmeIos = `# Bring My Bite - iOS Application
+Build and test the resulting app in Android Studio before distributing it. Configure signing, package ID, permissions, push notifications and production environment variables separately.`;
 
-## Build Xcode / iOS
-1. Install Capacitor CLI:
-\`\`\`bash
-npm install -g @capacitor/cli @capacitor/ios
-npx cap add ios
-\`\`\`
+  const readmeIos = `# Bring My Bite — iOS Starter Template
 
-2. Build and sync:
-\`\`\`bash
-npm run build
-npx cap sync ios
-npx cap open ios
-\`\`\`
-3. In Xcode: Select target simulator or device and click Run.
-`;
+This archive contains reference configuration and sample native files only. It is **not** a complete Xcode project and is not an IPA.
+
+To build a real app, start from the complete Bring My Bite repository, install its dependencies, build the web app, then generate the native project with Capacitor:
+1. npm install
+2. npm run build
+3. npm install @capacitor/core @capacitor/cli @capacitor/ios
+4. npx cap add ios
+5. npx cap sync ios
+6. npx cap open ios
+
+Complete signing, bundle identifiers, privacy declarations, entitlements, push notification setup and real-device testing in Xcode before distributing it.`;
 
   const androidManifestXml = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -266,12 +258,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 
   const filename = type === 'all' 
-    ? 'bring_my_bite_all_complete.zip' 
+    ? 'bring_my_bite_starter_templates.zip' 
     : type === 'website' 
-    ? 'website_code.zip' 
+    ? 'website_starter_template.zip' 
     : type === 'android' 
-    ? 'application_android.zip' 
-    : 'application_ios.zip';
+    ? 'application_android_starter.zip' 
+    : 'application_ios_starter.zip';
 
   const content = await zip.generateAsync({ type: 'blob' });
   const downloadUrl = URL.createObjectURL(content);
