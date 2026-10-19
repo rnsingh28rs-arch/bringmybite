@@ -131,14 +131,14 @@ export const NativeAppDownloadModal: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold font-serif-title tracking-wide text-[#F2C94C]">
-                  Bring My Bite Native Mobile Apps
+                  Bring My Bite Mobile Setup
                 </h2>
                 <span className="text-[10px] bg-emerald-700 text-white font-extrabold px-2 py-0.5 rounded-full uppercase">
-                  iOS & Android
+                  PWA + Starter Kits
                 </span>
               </div>
               <p className="text-xs text-emerald-200 mt-0.5">
-                Install on iPhone, Android, or build native binaries with Capacitor & PWA
+                Install the PWA now; native app ZIPs are starter scaffolds, not installable APK/IPA builds.
               </p>
             </div>
           </div>
@@ -162,7 +162,7 @@ export const NativeAppDownloadModal: React.FC = () => {
             }`}
           >
             <Download className="w-3.5 h-3.5 text-[#F2C94C]" />
-            <span>📦 Download Code ZIPs</span>
+            <span>📦 Download Starter ZIPs</span>
           </button>
 
           <button
@@ -173,7 +173,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                 : 'text-gray-700 hover:bg-white/60'
             }`}
           >
-            <span>🤖 Android (APK / Google Play)</span>
+            <span>🤖 Android Setup</span>
           </button>
 
           <button
@@ -184,7 +184,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                 : 'text-gray-700 hover:bg-white/60'
             }`}
           >
-            <span> iOS (iPhone / iPad)</span>
+            <span> iOS Setup</span>
           </button>
 
           <button
@@ -208,7 +208,7 @@ export const NativeAppDownloadModal: React.FC = () => {
             }`}
           >
             <Terminal className="w-3.5 h-3.5" />
-            <span>Native Project Files</span>
+            <span>Starter Config Files</span>
           </button>
         </div>
 
@@ -223,11 +223,11 @@ export const NativeAppDownloadModal: React.FC = () => {
                 <div className="flex items-center gap-2 text-[#F2C94C] mb-1">
                   <Download className="w-5 h-5" />
                   <h3 className="text-base font-bold font-serif-title">
-                    Bifurcated Source Code & Application Packages
+                    Starter Templates & Setup Notes
                   </h3>
                 </div>
                 <p className="text-xs text-emerald-200">
-                  Download individual archives for website frontend or platform-specific mobile apps, or the complete master zip archive.
+                  Download setup templates and notes. These ZIPs are not complete production source bundles or installable Android/iOS binaries.
                 </p>
               </div>
 
@@ -236,15 +236,15 @@ export const NativeAppDownloadModal: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] bg-[#C88A24] text-black font-extrabold px-2 py-0.5 rounded-full uppercase">
-                      Recommended Master Bundle
+                      Starter Bundle
                     </span>
-                    <span className="text-xs text-gray-500 font-mono">14.0 MB</span>
+                    <span className="text-xs text-gray-500 font-mono">Starter bundle</span>
                   </div>
                   <h4 className="text-sm font-bold text-gray-900 mt-1 font-serif-title">
-                    bring_my_bite_all_complete.zip
+                    bring_my_bite_starter_templates.zip
                   </h4>
                   <p className="text-xs text-gray-700 mt-0.5">
-                    Includes bifurcated folders: <code className="font-mono bg-white/70 px-1 rounded font-bold">website/</code>, <code className="font-mono bg-white/70 px-1 rounded font-bold">application/android/</code>, and <code className="font-mono bg-white/70 px-1 rounded font-bold">application/ios/</code>.
+                    Contains template folders only:  <code className="font-mono bg-white/70 px-1 rounded font-bold">website/</code>, <code className="font-mono bg-white/70 px-1 rounded font-bold">application/android/</code>, and <code className="font-mono bg-white/70 px-1 rounded font-bold">application/ios/</code>.
                   </p>
                 </div>
 
@@ -258,27 +258,27 @@ export const NativeAppDownloadModal: React.FC = () => {
                   className="px-4 py-2.5 bg-[#0C3822] hover:bg-[#0A2A1B] text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-md shrink-0 transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
                   <Download className="w-4 h-4 text-[#F2C94C]" />
-                  <span>{downloadingFile === 'all' ? 'Generating ZIP...' : 'Download Master Zip (All)'}</span>
+                  <span>{downloadingFile === 'all' ? 'Generating ZIP...' : 'Download Starter Bundle'}</span>
                 </button>
               </div>
 
               {/* Individual Bifurcated Zips Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 
-                {/* 1. Website Code Zip */}
+                {/* 1. Website Starter Template */}
                 <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between space-y-3">
                   <div>
                     <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-800 flex items-center justify-center mb-2">
                       <Globe className="w-5 h-5 text-blue-700" />
                     </div>
                     <h4 className="text-xs font-bold text-gray-900 font-serif-title">
-                      Website Source Code
+                      Website Starter Template
                     </h4>
                     <p className="text-[11px] text-gray-500 font-mono mt-0.5">
-                      website_code.zip
+                      website_starter_template.zip
                     </p>
                     <p className="text-xs text-gray-600 mt-2">
-                      Full responsive React 18, Vite, Tailwind CSS web platform with Admin, Manager, Chef, and Customer portals.
+                      Minimal starter files only—not the full source tree. Use the repository for the complete website project.
                     </p>
                   </div>
 
@@ -292,24 +292,24 @@ export const NativeAppDownloadModal: React.FC = () => {
                     className="w-full py-2 bg-[#124E33] hover:bg-[#0A2A1B] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5 text-[#F2C94C]" />
-                    <span>{downloadingFile === 'website' ? 'Generating ZIP...' : 'Download Website Zip'}</span>
+                    <span>{downloadingFile === 'website' ? 'Generating ZIP...' : 'Download Website Starter ZIP'}</span>
                   </button>
                 </div>
 
-                {/* 2. Android Application Zip */}
+                {/* 2. Android Starter Template */}
                 <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between space-y-3">
                   <div>
                     <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center mb-2">
                       <Smartphone className="w-5 h-5 text-emerald-700" />
                     </div>
                     <h4 className="text-xs font-bold text-gray-900 font-serif-title">
-                      Android Native App Code
+                      Android Starter Files
                     </h4>
                     <p className="text-[11px] text-gray-500 font-mono mt-0.5">
-                      application_android.zip
+                      application_android_starter.zip
                     </p>
                     <p className="text-xs text-gray-600 mt-2">
-                      Inside <code className="font-mono bg-gray-100 px-1 rounded text-[11px]">application/android/</code> with AndroidManifest, build.gradle, Capacitor bridge & assets.
+                      Sample manifest/configuration only—not a complete Android Studio project or APK/AAB.
                     </p>
                   </div>
 
@@ -323,24 +323,24 @@ export const NativeAppDownloadModal: React.FC = () => {
                     className="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5 text-[#F2C94C]" />
-                    <span>{downloadingFile === 'android' ? 'Generating ZIP...' : 'Download Android Zip'}</span>
+                    <span>{downloadingFile === 'android' ? 'Generating ZIP...' : 'Download Android Starter ZIP'}</span>
                   </button>
                 </div>
 
-                {/* 3. iOS Application Zip */}
+                {/* 3. iOS Starter Template */}
                 <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between space-y-3">
                   <div>
                     <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-900 flex items-center justify-center mb-2">
                       <Sparkles className="w-5 h-5 text-[#C88A24]" />
                     </div>
                     <h4 className="text-xs font-bold text-gray-900 font-serif-title">
-                      iOS Native App Code
+                      iOS Starter Files
                     </h4>
                     <p className="text-[11px] text-gray-500 font-mono mt-0.5">
-                      application_ios.zip
+                      application_ios_starter.zip
                     </p>
                     <p className="text-xs text-gray-600 mt-2">
-                      Inside <code className="font-mono bg-gray-100 px-1 rounded text-[11px]">application/ios/</code> with Info.plist, AppDelegate.swift, Podfile, Capacitor bridge & assets.
+                      Sample Info.plist/Podfile/AppDelegate only—not a complete Xcode project or IPA.
                     </p>
                   </div>
 
@@ -354,7 +354,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                     className="w-full py-2 bg-[#C88A24] hover:bg-[#A97116] text-black text-xs font-extrabold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>{downloadingFile === 'ios' ? 'Generating ZIP...' : 'Download iOS Zip'}</span>
+                    <span>{downloadingFile === 'ios' ? 'Generating ZIP...' : 'Download iOS Starter ZIP'}</span>
                   </button>
                 </div>
 
@@ -436,7 +436,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Terminal className="w-4 h-4 text-[#F2C94C]" />
-                    <h3 className="text-sm font-bold text-[#F2C94C] font-mono">1-Click Android Studio & APK Build</h3>
+                    <h3 className="text-sm font-bold text-[#F2C94C] font-mono">Android Studio Setup Notes</h3>
                   </div>
                   <button
                     onClick={() => handleCopy('npm install @capacitor/core @capacitor/cli @capacitor/android\nnpx cap add android\nnpx cap sync\nnpx cap open android', 'android-cli')}
@@ -521,7 +521,7 @@ export const NativeAppDownloadModal: React.FC = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Terminal className="w-4 h-4 text-[#F2C94C]" />
-                    <h3 className="text-sm font-bold text-[#F2C94C] font-mono">1-Click Xcode & iOS IPA Build</h3>
+                    <h3 className="text-sm font-bold text-[#F2C94C] font-mono">Xcode Setup Notes</h3>
                   </div>
                   <button
                     onClick={() => handleCopy('npm install @capacitor/core @capacitor/cli @capacitor/ios\nnpx cap add ios\nnpx cap sync\nnpx cap open ios', 'ios-cli')}

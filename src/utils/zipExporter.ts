@@ -106,69 +106,45 @@ export default defineConfig({
   }
 });`;
 
-  const readmeWebsite = `# Bring My Bite - Homely Tiffin & Mess Service
+  const readmeWebsite = `# Bring My Bite — Website Starter Template
 
-## Quick Start
-1. Install dependencies:
-\`\`\`bash
-npm install
-\`\`\`
+This ZIP is a **starter template**, not the complete Bring My Bite website source. It does not include the full src/ tree or all production assets, so it cannot run as the production portal by itself. Use the complete repository for the full application.
 
-2. Start development server:
-\`\`\`bash
-npm run dev
-\`\`\`
-Visit http://localhost:3000
+## Template setup notes
+1. Add the complete project source and install its dependencies.
+2. Run the development server using the repository's npm scripts.
+3. Build and test the complete project before deployment.
 
-3. Build for production:
-\`\`\`bash
-npm run build
-\`\`\`
+## Payment Configuration
+Payment and banking details are managed in the authenticated CMS and the restricted public payment view. This archive intentionally contains no real bank account number, IFSC code, or private payment configuration. Configure payment settings only in the target environment.`;
 
-## Payment Gateway & Banking Config
-- Primary Bank: Axis Bank
-- Account Holder: Quality Pan
-- Account No: 922020048876624
-- IFSC Code: UTIB0000624
-- UPI ID: 900484984@YBL
-- Policy: 100% Prepaid Only
-`;
+const readmeAndroid = `# Bring My Bite — Android Starter Template
 
-  const readmeAndroid = `# Bring My Bite - Android Application
+This archive contains reference configuration and sample native files only. It is **not** a complete Android Studio project, does not include the full website source, and is not an APK or AAB.
 
-## Build APK / Android Studio
-1. Install Capacitor CLI:
-\`\`\`bash
-npm install -g @capacitor/cli @capacitor/android
-npx cap add android
-\`\`\`
+To build a real app, start from the complete Bring My Bite repository, install its dependencies, build the web app, then generate the native project with Capacitor:
+1. npm install
+2. npm run build
+3. npm install @capacitor/core @capacitor/cli @capacitor/android
+4. npx cap add android
+5. npx cap sync android
+6. npx cap open android
 
-2. Build and sync:
-\`\`\`bash
-npm run build
-npx cap sync android
-npx cap open android
-\`\`\`
-3. In Android Studio: **Build > Build Bundle(s) / APK(s) > Build APK**.
-`;
+Build and test the resulting app in Android Studio before distributing it. Configure signing, package ID, permissions, push notifications and production environment variables separately.`;
 
-  const readmeIos = `# Bring My Bite - iOS Application
+  const readmeIos = `# Bring My Bite — iOS Starter Template
 
-## Build Xcode / iOS
-1. Install Capacitor CLI:
-\`\`\`bash
-npm install -g @capacitor/cli @capacitor/ios
-npx cap add ios
-\`\`\`
+This archive contains reference configuration and sample native files only. It is **not** a complete Xcode project and is not an IPA.
 
-2. Build and sync:
-\`\`\`bash
-npm run build
-npx cap sync ios
-npx cap open ios
-\`\`\`
-3. In Xcode: Select target simulator or device and click Run.
-`;
+To build a real app, start from the complete Bring My Bite repository, install its dependencies, build the web app, then generate the native project with Capacitor:
+1. npm install
+2. npm run build
+3. npm install @capacitor/core @capacitor/cli @capacitor/ios
+4. npx cap add ios
+5. npx cap sync ios
+6. npx cap open ios
+
+Complete signing, bundle identifiers, privacy declarations, entitlements, push notification setup and real-device testing in Xcode before distributing it.`;
 
   const androidManifestXml = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -241,25 +217,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }`;
 
-  const bankingConfigJson = {
-    "bankName": "Axis Bank",
-    "primaryAccountHolder": "Quality Pan",
-    "accountNumber": "922020048876624",
-    "ifscCode": "UTIB0000624",
-    "authorizedSignatories": "Rahul Narendra Singh",
-    "accountType": "Proprietorship firm Current A/c",
-    "upiId": "900484984@YBL",
-    "prepaidOnly": true,
-    "cashOnDeliveryAllowed": false
-  };
-
   if (type === 'website' || type === 'all') {
     const webFolder = type === 'all' ? zip.folder('website')! : zip;
     webFolder.file('index.html', indexHtmlContent);
     webFolder.file('package.json', packageJsonContent);
     webFolder.file('vite.config.ts', viteConfigContent);
     webFolder.file('README.md', readmeWebsite);
-    webFolder.file('PAYMENT_CONFIG.json', JSON.stringify(bankingConfigJson, null, 2));
     webFolder.file('public/manifest.json', JSON.stringify(manifestJson, null, 2));
   }
 
@@ -267,7 +230,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     const androidFolder = type === 'all' ? zip.folder('application/android')! : zip;
     androidFolder.file('README_ANDROID.md', readmeAndroid);
     androidFolder.file('package.json', packageJsonContent);
-    androidFolder.file('PAYMENT_CONFIG.json', JSON.stringify(bankingConfigJson, null, 2));
     androidFolder.file('capacitor.config.json', JSON.stringify(capacitorAndroidConfig, null, 2));
     androidFolder.file('android/app/src/main/AndroidManifest.xml', androidManifestXml);
     androidFolder.file('android/app/src/main/java/com/shreefoods/bringmybite/MainActivity.java', mainActivityJava);
@@ -278,7 +240,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     const iosFolder = type === 'all' ? zip.folder('application/ios')! : zip;
     iosFolder.file('README_IOS.md', readmeIos);
     iosFolder.file('package.json', packageJsonContent);
-    iosFolder.file('PAYMENT_CONFIG.json', JSON.stringify(bankingConfigJson, null, 2));
     iosFolder.file('capacitor.config.json', JSON.stringify(capacitorIosConfig, null, 2));
     iosFolder.file('ios/App/App/Info.plist', infoPlist);
     iosFolder.file('ios/App/App/AppDelegate.swift', appDelegateSwift);
@@ -286,12 +247,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 
   const filename = type === 'all' 
-    ? 'bring_my_bite_all_complete.zip' 
+    ? 'bring_my_bite_starter_templates.zip' 
     : type === 'website' 
-    ? 'website_code.zip' 
+    ? 'website_starter_template.zip' 
     : type === 'android' 
-    ? 'application_android.zip' 
-    : 'application_ios.zip';
+    ? 'application_android_starter.zip' 
+    : 'application_ios_starter.zip';
 
   const content = await zip.generateAsync({ type: 'blob' });
   const downloadUrl = URL.createObjectURL(content);
