@@ -125,13 +125,8 @@ Visit http://localhost:3000
 npm run build
 \`\`\`
 
-## Payment Gateway & Banking Config
-- Primary Bank: Axis Bank
-- Account Holder: Quality Pan
-- Account No: 922020048876624
-- IFSC Code: UTIB0000624
-- UPI ID: 900484984@YBL
-- Policy: 100% Prepaid Only
+## Payment Configuration
+Payment and banking details are managed in the authenticated CMS and the restricted public payment view. This downloadable starter archive intentionally contains no real bank account number, IFSC code, or private payment configuration. Configure payment settings only in the target environment.
 `;
 
   const readmeAndroid = `# Bring My Bite - Android Application
@@ -241,25 +236,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }`;
 
-  const bankingConfigJson = {
-    "bankName": "Axis Bank",
-    "primaryAccountHolder": "Quality Pan",
-    "accountNumber": "922020048876624",
-    "ifscCode": "UTIB0000624",
-    "authorizedSignatories": "Rahul Narendra Singh",
-    "accountType": "Proprietorship firm Current A/c",
-    "upiId": "900484984@YBL",
-    "prepaidOnly": true,
-    "cashOnDeliveryAllowed": false
-  };
-
   if (type === 'website' || type === 'all') {
     const webFolder = type === 'all' ? zip.folder('website')! : zip;
     webFolder.file('index.html', indexHtmlContent);
     webFolder.file('package.json', packageJsonContent);
     webFolder.file('vite.config.ts', viteConfigContent);
     webFolder.file('README.md', readmeWebsite);
-    webFolder.file('PAYMENT_CONFIG.json', JSON.stringify(bankingConfigJson, null, 2));
     webFolder.file('public/manifest.json', JSON.stringify(manifestJson, null, 2));
   }
 
@@ -267,7 +249,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     const androidFolder = type === 'all' ? zip.folder('application/android')! : zip;
     androidFolder.file('README_ANDROID.md', readmeAndroid);
     androidFolder.file('package.json', packageJsonContent);
-    androidFolder.file('PAYMENT_CONFIG.json', JSON.stringify(bankingConfigJson, null, 2));
     androidFolder.file('capacitor.config.json', JSON.stringify(capacitorAndroidConfig, null, 2));
     androidFolder.file('android/app/src/main/AndroidManifest.xml', androidManifestXml);
     androidFolder.file('android/app/src/main/java/com/shreefoods/bringmybite/MainActivity.java', mainActivityJava);
@@ -278,7 +259,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     const iosFolder = type === 'all' ? zip.folder('application/ios')! : zip;
     iosFolder.file('README_IOS.md', readmeIos);
     iosFolder.file('package.json', packageJsonContent);
-    iosFolder.file('PAYMENT_CONFIG.json', JSON.stringify(bankingConfigJson, null, 2));
     iosFolder.file('capacitor.config.json', JSON.stringify(capacitorIosConfig, null, 2));
     iosFolder.file('ios/App/App/Info.plist', infoPlist);
     iosFolder.file('ios/App/App/AppDelegate.swift', appDelegateSwift);
