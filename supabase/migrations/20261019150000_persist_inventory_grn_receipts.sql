@@ -128,9 +128,13 @@ BEGIN
   SELECT * INTO v_item FROM public.bmb_inventory WHERE id=p_inventory_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Inventory item not found'; END IF;
 
-  v_subtotal := round(p_quantity*p_unit_cost,2);
-  v_tax_amount := round(v_subtotal*p_tax_rate/100,2);
-  v_total := round(v_subtotal+v_tax_amount,2);
+  IF v_indent.purchase_price IS NULL OR round(v_indent.purchase_price,2)<>round(p_unit_cost,2) THEN
+    RAISE EXCEPTION 'GRN unit cost must match the Admin-approved purchase price';
+  END IF;
+  -- The approved purchase rate is tax-inclusive, so GST is extracted from it rather than added after approval.
+  v_total := round(p_quantity*p_unit_cost,2);
+  v_tax_amount := CASE WHEN p_tax_rate>0 THEN round(v_total*p_tax_rate/(100+p_tax_rate),2) ELSE 0 END;
+  v_subtotal := round(v_total-v_tax_amount,2);
   v_receipt_id := 'GRNROW-' || extract(epoch from clock_timestamp())::bigint || '-' || substr(md5(random()::text),1,8);
 
   -- Keep cost, stock movement, indent receipt quantity and GRN metadata atomic.
