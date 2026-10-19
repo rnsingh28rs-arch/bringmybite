@@ -23,7 +23,7 @@ test('purchase submission, payment approval, rejection and stock receipt use ato
   assert.match(panel, /recordApprovedInventoryPurchaseWithGrn/);
   assert.match(operations, /bmb_receive_inventory_purchase/);
   assert.match(read('src/components/panels/ReceiptPreview.tsx'), /Admin payment approval is required before receiving stock/);
-  assert.match(read('supabase/migrations/20261019150000_persist_inventory_grn_receipts.sql'), /v_total_received>v_indent.quantity_needed/);
+  assert.match(read('supabase/migrations/20261019140000_idempotent_inventory_movements.sql'), /v_total_received>v_indent.quantity_needed/);
 });
 
 test('staff routes require Supabase authentication and refresh expiring sessions', () => {
