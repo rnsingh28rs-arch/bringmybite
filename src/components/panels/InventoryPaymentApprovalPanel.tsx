@@ -5,7 +5,6 @@ import { calculateLineTotal, buildPaymentRequest, paymentStatusLabel } from '../
 import { recordApprovedInventoryPurchaseWithGrn } from '../../utils/inventoryOperations';
 import type { InventoryGrnDetails } from '../../utils/inventoryOperations';
 import { ReceiptPreview } from './ReceiptPreview';
-import { normalizeInventoryUnit } from '../../utils/inventoryUnits.mjs';
 import { Check, X, Send, IndianRupee, PackageCheck, RefreshCw } from 'lucide-react';
 
 type Mode = 'manager' | 'admin';
@@ -15,15 +14,6 @@ interface PurchaseLine { id:number; requestId:string; indentId:string; itemName:
 
 const money=(value:number)=>`₹${Number(value||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 const normalizedName=(value:string)=>String(value||'').normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
-const findInventoryMatch=(items:any[],name:string,unit:string)=>{
-  const named=items.filter(item=>normalizedName(item.name)===normalizedName(name));
-  const matches=named.filter(item=>normalizeInventoryUnit(item.unit)===normalizeInventoryUnit(unit));
-  if(named.length>0&&matches.length===0) throw new Error(`Unit mismatch for ${name}: purchase unit is ${unit}. Check the existing inventory unit before receiving stock.`);
-  const stocked=matches.filter(item=>Number(item.currentStock||0)>0);
-  if(stocked.length>1) throw new Error(`Multiple stocked inventory rows match ${name} (${unit}). Resolve duplicate inventory rows before receiving this purchase.`);
-  return stocked[0]||matches[0]||null;
-};
-
 export const InventoryPaymentApprovalPanel: React.FC<{ mode:Mode }> = ({ mode }) => {
   const { chefIndents, inventory } = useApp();
   const [requests,setRequests]=useState<PurchaseRequest[]>([]);
