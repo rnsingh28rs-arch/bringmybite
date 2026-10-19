@@ -2,7 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { supabasePatch, supabaseSelect, supabaseRpc } from '../../cms/supabaseRest';
 import { calculateLineTotal, buildPaymentRequest, paymentStatusLabel } from '../../utils/inventoryPaymentApproval.mjs';
-import { createInventoryIdempotencyKey, recordApprovedInventoryPurchaseReceipt } from '../../utils/inventoryOperations';
+import { recordApprovedInventoryPurchaseWithGrn } from '../../utils/inventoryOperations';
+import type { InventoryGrnDetails } from '../../utils/inventoryOperations';
+import { ReceiptPreview } from './ReceiptPreview';
 import { normalizeInventoryUnit } from '../../utils/inventoryUnits.mjs';
 import { Check, X, Send, IndianRupee, PackageCheck, RefreshCw } from 'lucide-react';
 
@@ -27,11 +29,10 @@ export const InventoryPaymentApprovalPanel: React.FC<{ mode:Mode }> = ({ mode })
   const [requests,setRequests]=useState<PurchaseRequest[]>([]);
   const [lines,setLines]=useState<PurchaseLine[]>([]);
   const [prices,setPrices]=useState<Record<string,string>>({});
-  const [received,setReceived]=useState<Record<string,string>>({});
-  const [receiptKeys,setReceiptKeys]=useState<Record<string,{fingerprint:string;key:string}>>({});
   const [notes,setNotes]=useState<Record<string,string>>({});
   const [message,setMessage]=useState('');
   const [busy,setBusy]=useState<string>('');
+  const [receiptPreviewIndent,setReceiptPreviewIndent]=useState<any|null>(null);
 
   const flash=(text:string)=>{setMessage(text);window.setTimeout(()=>setMessage(''),4000);};
   const loadRequests=async()=>{
@@ -72,59 +73,27 @@ export const InventoryPaymentApprovalPanel: React.FC<{ mode:Mode }> = ({ mode })
   };
   const approvePayment=async(request:PurchaseRequest)=>{setBusy(request.id);try{await supabaseRpc('bmb_approve_inventory_purchase_payment',{p_request_id:request.id});flash(`${request.id}: payment of ${money(request.totalAmount)} approved. Stock remains unchanged until receipt.`);await loadRequests();window.location.reload();}catch(e){flash(e instanceof Error?e.message:'Payment approval failed.');}finally{setBusy('');}};
   const rejectPayment=async(request:PurchaseRequest)=>{setBusy(request.id);try{await supabaseRpc('bmb_reject_inventory_purchase_payment',{p_request_id:request.id,p_rejection_note:notes[request.id]||'Rejected by Admin'});flash(`${request.id}: payment request rejected.`);await loadRequests();window.location.reload();}catch(e){flash(e instanceof Error?e.message:'Payment rejection failed.');}finally{setBusy('');}};
-  const receiveItem=async(indent:any)=>{
-    const qty=Number(received[indent.id]);
-    if(!Number.isFinite(qty)||qty<=0){flash('Enter the actual quantity physically received.');return;}
-    if(indent.paymentStatus!=='Approved'){flash('Admin payment approval is required before receiving this stock.');return;}
-    const alreadyReceived=Number(indent.receivedQuantity||0);
-    const ordered=Number(indent.quantityNeeded||0);
-    if(alreadyReceived>=ordered){flash('This purchase is already fully received.');return;}
-    if(alreadyReceived+qty>ordered){flash(`Enter no more than the remaining ${Number((ordered-alreadyReceived).toFixed(3))} ${indent.unit}.`);return;}
-    setBusy(indent.id);
+  const recordGrn=async(details:InventoryGrnDetails)=>{
+    if(!receiptPreviewIndent) throw new Error('Select a purchase indent first.');
+    setBusy(receiptPreviewIndent.id);
     try{
-      let matched=findInventoryMatch(inventory,indent.itemName,indent.unit);
-      if(!matched){
-        // Re-read central inventory before creating a row; the previous receipt attempt may
-        // have created the zero-stock item before its receipt request lost connectivity.
-        const freshRows=await supabaseSelect<any>('bmb_inventory','select=id,name,unit,current_stock&order=name.asc');
-        matched=findInventoryMatch(freshRows.map((row:any)=>({...row,currentStock:Number(row.current_stock||0)})),indent.itemName,indent.unit);
-      }
-      let inventoryId=matched?.id;
-      if(!inventoryId){
-        inventoryId=`INV-${Date.now()}`;
-        await supabaseRpc('bmb_create_inventory_item_with_opening_balance',{
-          p_id:inventoryId,
-          p_name:String(indent.itemName).trim(),
-          p_category:/rice|atta|dal|flour|grain|pulse/i.test(indent.itemName)?'Grains & Pulses':/oil|masala|spice|salt|sugar/i.test(indent.itemName)?'Spices & Oils':/chicken|egg|paneer|milk|poultry/i.test(indent.itemName)?'Dairy & Poultry':'Fresh Vegetables',
-          p_opening_quantity:0,
-          p_unit:indent.unit,
-          p_min_threshold:0,
-          p_cost_per_unit:Number(indent.purchasePrice),
-          p_supplier:'',
-          p_last_restocked:null
-        });
-      }else{
-        await supabasePatch('bmb_inventory',`id=eq.${encodeURIComponent(inventoryId)}`,{cost_per_unit:Number(indent.purchasePrice),updated_at:new Date().toISOString()});
-      }
-      const fingerprint=`${inventoryId}|${qty}`;
-      const previousKey=receiptKeys[indent.id];
-      const idempotencyKey=previousKey?.fingerprint===fingerprint?previousKey.key:createInventoryIdempotencyKey('purchase-receipt');
-      setReceiptKeys(prev=>({...prev,[indent.id]:{fingerprint,key:idempotencyKey}}));
-      const result=await recordApprovedInventoryPurchaseReceipt(indent.id,inventoryId,qty,idempotencyKey);
+      const result=await recordApprovedInventoryPurchaseWithGrn(receiptPreviewIndent,inventory,details);
       const saved=Array.isArray(result)?result[0]:result;
-      const total=Number(saved?.received_quantity??(alreadyReceived+qty));
-      const balance=Number(saved?.current_stock);
-      setReceiptKeys(prev=>{const next={...prev};delete next[indent.id];return next;});
-      flash(`${indent.itemName}: received ${qty} ${indent.unit}; total received ${total}/${ordered} ${indent.unit}; current stock ${Number.isFinite(balance)?balance:'updated'} ${indent.unit}.`);
+      flash(`${receiptPreviewIndent.itemName}: GRN ${details.grnNumber} saved; received ${details.quantity} ${receiptPreviewIndent.unit}; stock ${saved?.current_stock??'updated'} ${receiptPreviewIndent.unit}.`);
+      setReceiptPreviewIndent(null);
       window.location.reload();
-    }catch(e){flash(e instanceof Error?e.message:'Receipt update failed.');}
-    finally{setBusy('');}
+      return result;
+    }catch(e){
+      flash(e instanceof Error?e.message:'Receipt update failed.');
+      throw e;
+    }finally{setBusy('');}
   };
 
   if(mode==='manager') return <div className="space-y-6"><div className="bg-white rounded-2xl border p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-black text-lg text-[#124E33]">Chef → Manager → Admin Stock Payment Workflow</h3><p className="text-xs text-gray-500 mt-1">Approve the Chef quantity, enter your purchase rate, then send the complete amount to Admin. Current Stock changes only after physical receipt.</p></div><button onClick={()=>void loadRequests()} className="px-3 py-2 bg-gray-100 rounded-xl text-xs font-bold"><RefreshCw className="inline w-3.5 h-3.5"/> Refresh</button></div></div>
     {message&&<div className="bg-emerald-100 border border-emerald-300 text-emerald-900 p-3 rounded-xl text-sm font-bold">✓ {message}</div>}
-    <div className="bg-white rounded-2xl border overflow-x-auto"><div className="p-5 border-b"><div className="flex flex-wrap justify-between gap-3"><div><h4 className="font-black uppercase text-sm">Manager Review & Purchase Pricing</h4><p className="text-[11px] text-gray-500">Requested quantity is the order quantity. It is not Current Stock.</p></div><button onClick={()=>void submitForPayment()} disabled={busy==='submit'||pricedApproved.length===0} className="px-4 py-2.5 bg-[#124E33] text-white rounded-xl text-xs font-black disabled:opacity-40"><Send className="inline w-4 h-4"/> Send {pricedApproved.length||''} Item(s) to Admin • {money(pricedApproved.reduce((s,i)=>s+calculateLineTotal(i.quantityNeeded,Number(i.purchasePrice)),0))}</button></div></div><table className="w-full text-left text-xs"><thead><tr className="bg-gray-100"><th className="p-3">Item</th><th className="p-3">Requested / Ordered</th><th className="p-3">Current Stock</th><th className="p-3">Purchase Price</th><th className="p-3">Line Total</th><th className="p-3">Approval / Receipt</th></tr></thead><tbody>{managerPending.map(indent=>{const sameName=inventory.filter(i=>normalizedName(i.name)===normalizedName(indent.itemName));const matches=sameName.filter(i=>String(i.unit||'').trim().toLowerCase()===String(indent.unit||'').trim().toLowerCase());const stocked=matches.filter(i=>Number(i.currentStock||0)>0);const existing=stocked.length===1?stocked[0]:matches[0];const lineTotal=Number(indent.purchasePrice)>0?calculateLineTotal(indent.quantityNeeded,Number(indent.purchasePrice)):0;const label=paymentStatusLabel(indent);return <tr key={indent.id} className="border-b align-top"><td className="p-3 font-bold">{indent.itemName}<div className="text-[10px] text-gray-500">Chef: {indent.chefName||'Chef'}</div></td><td className="p-3 font-black">{indent.quantityNeeded} {indent.unit}</td><td className="p-3 font-black">{existing?.currentStock??0} {existing?.unit||indent.unit}<div className="text-[10px] text-gray-500">On order: {indent.quantityNeeded} {indent.unit}</div></td><td className="p-3">{indent.purchasePrice?money(indent.purchasePrice):<div className="flex gap-1"><input type="number" min="0.01" step="0.01" placeholder="₹ / unit" value={prices[indent.id]??''} onChange={e=>setPrices({...prices,[indent.id]:e.target.value})} className="w-24 p-1.5 border rounded-lg"/><button onClick={()=>void savePrice(indent)} className="px-2 py-1 bg-blue-600 text-white rounded-lg font-bold">Save</button></div>}</td><td className="p-3 font-black text-emerald-800">{lineTotal?money(lineTotal):'—'}</td><td className="p-3"><div className={`inline-flex px-2 py-1 rounded-full text-[10px] font-black ${indent.status==='Pending Approval'?'bg-amber-100 text-amber-800':indent.paymentStatus==='Approved'?'bg-emerald-100 text-emerald-800':indent.paymentStatus==='Rejected'||indent.status==='Rejected'?'bg-red-100 text-red-800':'bg-blue-100 text-blue-800'}`}>{indent.status==='Pending Approval'?'Waiting for Manager Approval':label}</div>{indent.status==='Pending Approval'&&<div className="flex gap-2 mt-2"><button disabled={busy===indent.id} onClick={()=>void approveIndent(indent.id)} className="px-2.5 py-1.5 bg-blue-600 text-white rounded-lg font-bold"><Check className="inline w-3.5 h-3.5"/> Approve</button><button disabled={busy===indent.id} onClick={()=>void rejectIndent(indent.id)} className="px-2.5 py-1.5 bg-red-600 text-white rounded-lg font-bold"><X className="inline w-3.5 h-3.5"/> Reject</button></div>}{indent.paymentStatus==='Approved'&&Number(indent.receivedQuantity||0)<Number(indent.quantityNeeded||0)&&<div className="mt-2 flex gap-2 items-end"><label className="text-[10px] font-bold">Received Qty<input type="number" min="0.01" step="0.01" value={received[indent.id]??''} onChange={e=>setReceived({...received,[indent.id]:e.target.value})} placeholder={`Remaining ${Math.max(0,Number(indent.quantityNeeded||0)-Number(indent.receivedQuantity||0))} ${indent.unit}`} className="block w-24 p-1.5 border rounded-lg"/></label><button disabled={busy===indent.id} onClick={()=>void receiveItem(indent)} className="px-2.5 py-1.5 bg-emerald-700 text-white rounded-lg font-bold disabled:opacity-50"><PackageCheck className="inline w-3.5 h-3.5"/> {busy===indent.id?'Receiving…':'Receive'}</button></div>}{indent.paymentStatus==='Pending Admin Approval'&&<div className="text-[10px] text-amber-700 font-bold mt-2">Waiting for Admin payment approval</div>}{indent.paymentStatus==='Rejected'&&<div className="text-[10px] text-red-700 font-bold mt-2">Admin rejected this payment. Enter price and resubmit.</div>}</td></tr>})}</tbody></table></div>
+    <div className="bg-white rounded-2xl border overflow-x-auto"><div className="p-5 border-b"><div className="flex flex-wrap justify-between gap-3"><div><h4 className="font-black uppercase text-sm">Manager Review & Purchase Pricing</h4><p className="text-[11px] text-gray-500">Requested quantity is the order quantity. It is not Current Stock.</p></div><button onClick={()=>void submitForPayment()} disabled={busy==='submit'||pricedApproved.length===0} className="px-4 py-2.5 bg-[#124E33] text-white rounded-xl text-xs font-black disabled:opacity-40"><Send className="inline w-4 h-4"/> Send {pricedApproved.length||''} Item(s) to Admin • {money(pricedApproved.reduce((s,i)=>s+calculateLineTotal(i.quantityNeeded,Number(i.purchasePrice)),0))}</button></div></div><table className="w-full text-left text-xs"><thead><tr className="bg-gray-100"><th className="p-3">Item</th><th className="p-3">Requested / Ordered</th><th className="p-3">Current Stock</th><th className="p-3">Purchase Price</th><th className="p-3">Line Total</th><th className="p-3">Approval / Receipt</th></tr></thead><tbody>{managerPending.map(indent=>{const sameName=inventory.filter(i=>normalizedName(i.name)===normalizedName(indent.itemName));const matches=sameName.filter(i=>String(i.unit||'').trim().toLowerCase()===String(indent.unit||'').trim().toLowerCase());const stocked=matches.filter(i=>Number(i.currentStock||0)>0);const existing=stocked.length===1?stocked[0]:matches[0];const lineTotal=Number(indent.purchasePrice)>0?calculateLineTotal(indent.quantityNeeded,Number(indent.purchasePrice)):0;const label=paymentStatusLabel(indent);return <tr key={indent.id} className="border-b align-top"><td className="p-3 font-bold">{indent.itemName}<div className="text-[10px] text-gray-500">Chef: {indent.chefName||'Chef'}</div></td><td className="p-3 font-black">{indent.quantityNeeded} {indent.unit}</td><td className="p-3 font-black">{existing?.currentStock??0} {existing?.unit||indent.unit}<div className="text-[10px] text-gray-500">On order: {indent.quantityNeeded} {indent.unit}</div></td><td className="p-3">{indent.purchasePrice?money(indent.purchasePrice):<div className="flex gap-1"><input type="number" min="0.01" step="0.01" placeholder="₹ / unit" value={prices[indent.id]??''} onChange={e=>setPrices({...prices,[indent.id]:e.target.value})} className="w-24 p-1.5 border rounded-lg"/><button onClick={()=>void savePrice(indent)} className="px-2 py-1 bg-blue-600 text-white rounded-lg font-bold">Save</button></div>}</td><td className="p-3 font-black text-emerald-800">{lineTotal?money(lineTotal):'—'}</td><td className="p-3"><div className={`inline-flex px-2 py-1 rounded-full text-[10px] font-black ${indent.status==='Pending Approval'?'bg-amber-100 text-amber-800':indent.paymentStatus==='Approved'?'bg-emerald-100 text-emerald-800':indent.paymentStatus==='Rejected'||indent.status==='Rejected'?'bg-red-100 text-red-800':'bg-blue-100 text-blue-800'}`}>{indent.status==='Pending Approval'?'Waiting for Manager Approval':label}</div>{indent.status==='Pending Approval'&&<div className="flex gap-2 mt-2"><button disabled={busy===indent.id} onClick={()=>void approveIndent(indent.id)} className="px-2.5 py-1.5 bg-blue-600 text-white rounded-lg font-bold"><Check className="inline w-3.5 h-3.5"/> Approve</button><button disabled={busy===indent.id} onClick={()=>void rejectIndent(indent.id)} className="px-2.5 py-1.5 bg-red-600 text-white rounded-lg font-bold"><X className="inline w-3.5 h-3.5"/> Reject</button></div>}{indent.paymentStatus==='Approved'&&Number(indent.receivedQuantity||0)<Number(indent.quantityNeeded||0)&&<div className="mt-2"><button disabled={busy===indent.id} onClick={()=>setReceiptPreviewIndent(indent)} className="px-2.5 py-1.5 bg-emerald-700 text-white rounded-lg font-bold disabled:opacity-50"><PackageCheck className="inline w-3.5 h-3.5"/> {busy===indent.id?'Recording…':'Receipt / GRN'}</button></div>}{indent.paymentStatus==='Pending Admin Approval'&&<div className="text-[10px] text-amber-700 font-bold mt-2">Waiting for Admin payment approval</div>}{indent.paymentStatus==='Rejected'&&<div className="text-[10px] text-red-700 font-bold mt-2">Admin rejected this payment. Enter price and resubmit.</div>}</td></tr>})}</tbody></table></div>
     {requests.length>0&&<div className="bg-white rounded-2xl border p-5"><h4 className="font-black uppercase text-sm mb-3">Payment Request History</h4><div className="space-y-2">{requests.map(r=><div key={r.id} className="flex flex-wrap items-center justify-between gap-3 border rounded-xl p-3"><div><b>{r.id}</b><div className="text-[11px] text-gray-500">{new Date(r.requestedAt).toLocaleString('en-IN')} • {lines.filter(l=>l.requestId===r.id).length} items</div></div><div className="font-black">{money(r.totalAmount)}</div><span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${r.status==='Approved'?'bg-emerald-100 text-emerald-800':r.status==='Rejected'?'bg-red-100 text-red-800':'bg-amber-100 text-amber-800'}`}>{r.status}</span></div>)}</div></div>}
+    {receiptPreviewIndent&&<ReceiptPreview indent={receiptPreviewIndent} inventory={inventory} onClose={()=>setReceiptPreviewIndent(null)} onRecordReceipt={recordGrn}/>}
   </div>;
 
   const pendingRequests=requests.filter(r=>r.status==='Pending Admin Approval');
