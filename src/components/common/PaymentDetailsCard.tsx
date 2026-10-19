@@ -47,7 +47,7 @@ export const PaymentDetailsCard: React.FC<PaymentDetailsCardProps> = ({ amount, 
     window.location.href = url;
   };
 
-  const qrCodeUrl = payment.qrUrl || getQrCodeUrl(payableAmount, orderReference, payment);
+  const qrCodeUrl = payableAmount > 0 && hasUpiDestination ? getQrCodeUrl(payableAmount, orderReference, payment) : (payment.qrUrl || getQrCodeUrl(0, orderReference, payment));
 
   return (
     <div className={`bg-white rounded-2xl border-2 border-[#C88A24] overflow-hidden shadow-md ${className}`}>
@@ -76,7 +76,7 @@ export const PaymentDetailsCard: React.FC<PaymentDetailsCardProps> = ({ amount, 
           <div className="md:col-span-5 flex flex-col items-center justify-center p-3 bg-[#FAF7F2] rounded-2xl border border-[#E8E1D5] text-center space-y-2">
             <div className="bg-white p-2.5 rounded-xl border border-gray-300 shadow-xs">{qrCodeUrl ? <img src={qrCodeUrl} alt="UPI payment QR code" className="w-36 h-36 sm:w-44 sm:h-44 object-contain rounded-md" /> : <div className="w-36 h-36 sm:w-44 sm:h-44 flex items-center justify-center text-xs text-gray-500">Payment QR not configured</div>}</div>
             <div className="space-y-0.5"><span className="text-[11px] font-extrabold text-gray-900 block font-mono">{payment.upiId || 'UPI destination not configured'}</span><span className="text-[10px] text-gray-500 block">Google Pay, PhonePe, Paytm, BHIM and other UPI apps</span></div>
-            <button type="button" onClick={() => copyToClipboard(payment.upiId, 'upiId')} className="px-3 py-1.5 bg-[#124E33] hover:bg-[#0A2A1B] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs w-full justify-center">{copiedField === 'upiId' ? <><Check className="w-3.5 h-3.5 text-[#F2C94C]" /><span>UPI ID Copied</span></> : <><Copy className="w-3.5 h-3.5" /><span>Copy UPI ID</span></>}</button>
+            {hasUpiDestination&&<button type="button" onClick={() => copyToClipboard(payment.upiId, 'upiId')} className="px-3 py-1.5 bg-[#124E33] hover:bg-[#0A2A1B] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs w-full justify-center">{copiedField === 'upiId' ? <><Check className="w-3.5 h-3.5 text-[#F2C94C]" /><span>UPI ID Copied</span></> : <><Copy className="w-3.5 h-3.5" /><span>Copy UPI ID</span></>}</button>}
           </div>
           <div className="md:col-span-7 space-y-2.5">
             <div className="bg-[#FAF7F2] p-3.5 rounded-2xl border border-[#E8E1D5] space-y-2 text-xs">
@@ -86,7 +86,7 @@ export const PaymentDetailsCard: React.FC<PaymentDetailsCardProps> = ({ amount, 
               {payment.ifscCode&&<div className="flex items-center justify-between border-b border-gray-200 pb-1.5"><span className="text-gray-500 flex items-center gap-1.5"><FileCheck className="w-3.5 h-3.5 text-[#124E33]" />IFSC:</span><span className="font-mono font-extrabold text-xs text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">{payment.ifscCode}</span></div>}
               {payment.accountType&&<div className="flex items-center justify-between pt-0.5"><span className="text-gray-500">Account Type:</span><span className="font-semibold text-gray-800 text-[11px] bg-white px-2 py-0.5 rounded border border-gray-200">{payment.accountType}</span></div>}
             </div>
-            <button type="button" onClick={() => copyToClipboard(paymentDetailsText, 'allBank')} className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-[#0C3822] text-xs font-extrabold rounded-xl flex items-center justify-center gap-1.5 border border-emerald-200">{copiedField === 'allBank' ? <><Check className="w-3.5 h-3.5 text-emerald-600" /><span>Payment Details Copied</span></> : <><Copy className="w-3.5 h-3.5 text-[#124E33]" /><span>Copy Payment Details</span></>}</button>
+            {paymentDetailsText&&<button type="button" onClick={() => copyToClipboard(paymentDetailsText, 'allBank')} className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-[#0C3822] text-xs font-extrabold rounded-xl flex items-center justify-center gap-1.5 border border-emerald-200">{copiedField === 'allBank' ? <><Check className="w-3.5 h-3.5 text-emerald-600" /><span>Payment Details Copied</span></> : <><Copy className="w-3.5 h-3.5 text-[#124E33]" /><span>Copy Payment Details</span></>}</button>}
           </div>
         </div>
       </div>
