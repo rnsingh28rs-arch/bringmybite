@@ -115,7 +115,17 @@ BEGIN
        OR v_existing.quantity IS DISTINCT FROM p_quantity
        OR v_existing.grn_number IS DISTINCT FROM trim(p_grn_number)
        OR v_existing.unit_cost IS DISTINCT FROM p_unit_cost
-       OR v_existing.tax_rate IS DISTINCT FROM p_tax_rate THEN
+       OR v_existing.tax_rate IS DISTINCT FROM p_tax_rate
+       OR v_existing.supplier_name IS DISTINCT FROM trim(p_supplier_name)
+       OR v_existing.supplier_contact IS DISTINCT FROM COALESCE(p_supplier_contact,'')
+       OR v_existing.supplier_address IS DISTINCT FROM COALESCE(p_supplier_address,'')
+       OR v_existing.supplier_gstin IS DISTINCT FROM COALESCE(p_supplier_gstin,'')
+       OR v_existing.invoice_number IS DISTINCT FROM COALESCE(p_invoice_number,'')
+       OR v_existing.invoice_date IS DISTINCT FROM p_invoice_date
+       OR v_existing.received_date IS DISTINCT FROM p_received_date
+       OR v_existing.received_by IS DISTINCT FROM trim(p_received_by)
+       OR v_existing.store_name IS DISTINCT FROM trim(p_store_name)
+       OR v_existing.notes IS DISTINCT FROM COALESCE(p_notes,'') THEN
       RAISE EXCEPTION 'Idempotency key was already used for a different GRN receipt';
     END IF;
     SELECT * INTO v_item FROM public.bmb_inventory WHERE id=p_inventory_id;
