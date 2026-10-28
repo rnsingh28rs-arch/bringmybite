@@ -25,13 +25,13 @@ test('SEO config does not publish staff portal routes', () => {
 });
 
 test('sitemap uses the production canonical origin', () => {
-  assert.doesNotMatch(sitemap, /www\.bringmybite\.com/);
-  assert.match(sitemap, /https:\/\/bringmybite\.com\//);
+  assert.match(sitemap, /https:\/\/www\.bringmybite\.com\//);
+  assert.doesNotMatch(sitemap, /https:\/\/bringmybite\.com\//);
 });
 
 test('homepage metadata has a real canonical and search description', () => {
   const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  assert.match(index, /rel="canonical" href="https:\/\/bringmybite\.com\/"/);
+  assert.match(index, /rel="canonical" href="https:\/\/www\.bringmybite\.com\//);
   assert.match(index, /name="description" content="[^"]+"/);
   assert.match(index, /property="og:title"/);
   assert.match(index, /name="twitter:card"/);
