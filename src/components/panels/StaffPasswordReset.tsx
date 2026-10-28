@@ -1,6 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, KeyRound, ShieldCheck } from 'lucide-react';
 import { getSupabasePublishableKey, getSupabaseUrl } from '../../cms/supabaseRest';
+
+const maskEmail = (value: string) => {
+  const [local, domain] = value.split('@');
+  if (!local || !domain) return value;
+  return `${local.length <= 2 ? local[0] || '*' : `${local.slice(0, 2)}•••`}@${domain}`;
+};
 
 export const StaffPasswordReset: React.FC = () => {
   const recovery = useMemo(() => {
@@ -18,7 +24,26 @@ export const StaffPasswordReset: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [accountEmail, setAccountEmail] = useState('');
+  const [checkingAccount, setCheckingAccount] = useState(false);
   const tokenReady = Boolean(recovery.accessToken) && (!recovery.type || recovery.type === 'recovery');
+
+  useEffect(() => {
+    if (!tokenReady) return;
+    let cancelled = false;
+    setCheckingAccount(true);
+    fetch(`${getSupabaseUrl()}/auth/v1/user`, {
+      headers: { apikey: getSupabasePublishableKey(), Authorization: `Bearer ${recovery.accessToken}` },
+    })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.msg || data.message || 'This reset link is invalid or expired.');
+        if (!cancelled && typeof data.email === 'string') setAccountEmail(data.email);
+      })
+      .catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : 'Could not verify the account for this reset link.'); })
+      .finally(() => { if (!cancelled) setCheckingAccount(false); });
+    return () => { cancelled = true; };
+  }, [tokenReady, recovery.accessToken]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -49,9 +74,10 @@ export const StaffPasswordReset: React.FC = () => {
         <h1 className="mt-4 text-2xl font-black text-[#124E33]">{saved ? 'Password updated' : 'Create a new password'}</h1>
         <p className="mt-1 text-sm text-gray-500">{saved ? 'Your password has been changed. You can now sign in with it.' : 'Choose a new password for your Bring My Bite staff account.'}</p>
       </div>
-      {saved ? <a href="/dadmin" className="block w-full rounded-xl bg-[#124E33] py-3.5 text-center text-white font-black">Return to D-Admin login</a> : <>
+      {saved ? <><div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">Password updated for <strong>{accountEmail ? maskEmail(accountEmail) : 'the verified account'}</strong>.</div><a href="/dadmin" className="block w-full rounded-xl bg-[#124E33] py-3.5 text-center text-white font-black">Return to D-Admin login</a></> : <>
+        {tokenReady && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{checkingAccount ? 'Verifying which account this reset link belongs to…' : accountEmail ? <>Password reset for: <strong>{maskEmail(accountEmail)}</strong></> : 'The account for this link could not be verified yet.'}</div>}
         {recovery.error || recovery.errorCode ? <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-semibold text-rose-800">{decodeURIComponent(recovery.error.replace(/\+/g, ' ')) || 'This reset link is invalid or has expired.'}</div> : null}
-        {!tokenReady && <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">Open this page from the password-reset email. If the link says expired, request a fresh one from the login screen.</div>}
+        {!tokenReady && <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">No account is identified on this page yet. Open this page from the password-reset email; the verified account email will appear here. If the link says expired, request a fresh one from the login screen.</div>}
         <label className="block text-sm font-bold text-gray-700">New password<div className="relative mt-2"><KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input type="password" autoComplete="new-password" minLength={8} value={password} onChange={e => setPassword(e.target.value)} className="w-full rounded-xl border-2 border-gray-200 py-3 pl-10 pr-4 outline-none focus:border-[#124E33]" placeholder="At least 8 characters" required /></div></label>
         <label className="block text-sm font-bold text-gray-700">Confirm new password<input type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="mt-2 w-full rounded-xl border-2 border-gray-200 px-4 py-3 outline-none focus:border-[#124E33]" placeholder="Enter the same password again" required /></label>
         {error && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-semibold text-rose-800">{error}</div>}
