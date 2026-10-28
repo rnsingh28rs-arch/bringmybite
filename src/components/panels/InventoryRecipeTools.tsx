@@ -4,7 +4,7 @@ import {convertRecipeQuantity,normalizeInventoryUnit} from '../../utils/inventor
 import {ChefHat,Trash2,Plus,Calculator,AlertTriangle} from 'lucide-react';
 import {suggestedIngredientsForThali} from '../../utils/inventorySuggestions.mjs';
 export const UNITS=['kg','grams','packets','pieces','liters','boxes'];
-const normalizeName=(value:string)=>String(value||'').normalize('NFKC').trim().replace(/\\s+/g,' ').toLowerCase();
+const normalizeName=(value:string)=>String(value||'').normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
 export function InventoryRecipeTools({menuByPackage,trays,inventory=[]}:{menuByPackage:Record<string,any[]>;trays:Record<string,number>;inventory?:any[]}){
  const [rows,setRows]=useState<any[]>([]),[pkg,setPkg]=useState('VEG CLASSIC'),[meal,setMeal]=useState('lunch'),[dish,setDish]=useState(''),[ing,setIng]=useState(''),[qty,setQty]=useState(''),[unit,setUnit]=useState('grams'),[msg,setMsg]=useState('');
  const [suggested,setSuggested]=useState<any[]>([]),[suggestionThalis,setSuggestionThalis]=useState(String(trays['VEG CLASSIC']||1));
