@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { CheckCircle2, KeyRound, ShieldCheck } from 'lucide-react';
-import { getSupabasePublishableKey, getSupabaseUrl } from '../cms/supabaseRest';
+import { getSupabasePublishableKey, getSupabaseUrl } from '../../cms/supabaseRest';
 
 export const StaffPasswordReset: React.FC = () => {
   const recovery = useMemo(() => {
