@@ -27,6 +27,7 @@ import { CalculatorWidget } from './components/common/CalculatorWidget';
 import { OrderRequestAlerts } from './components/panels/OrderRequestAlerts';
 import { PanelApp } from './components/panels/PanelApp';
 import { SimpleStaffLogin } from './components/panels/SimpleStaffLogin';
+import { StaffPasswordReset } from './components/panels/StaffPasswordReset';
 import { CmsProvider } from './cms/CmsContext';
 import { resolveStaffRoute } from './utils/staffRoute.mjs';
 import { resolvePanelRole } from './utils/mobilePanelRouting.mjs';
@@ -47,6 +48,7 @@ const MainContent:React.FC=()=>{
   const access=resolveStaffRoute(window.location.pathname);const role=access?.role??'customer';
   useEffect(()=>{setActiveRole(panelRole || role);},[panelRole,role,locationKey,setActiveRole]);
   if(window.location.pathname.toLowerCase().startsWith('/panel-app')) return <PanelApp/>;
+  if(window.location.pathname.toLowerCase() === '/reset-password') return <StaffPasswordReset/>;
   const seoRoute=getSeoRoute(window.location.pathname);
   if(role==='customer' && seoRoute && seoRoute.path!=='/') return <><SeoManager/><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><PublicSeoPage path={seoRoute.path}/><Footer/></div></>;
   if(role==='customer') return <MobileAppFrame><><SeoManager/><div className="min-h-screen bg-[#FAF7F2] text-[#1A261E] flex flex-col font-sans"><TopBar/><Header/><TemporaryNoticeTicker/><TodayMenuTicker/><SubscriptionPlanPromoBanner/><ExpiryReminderBanner/><OrderStatusNotifier/><CustomerConversionHome/><Footer/><ChatBox/><WeeklyMenuModal/><RegistrationModal/><InstantOrderModal/><BonusOffersModal/><RenewalModal/><ReminderPreviewModal/><NativeAppDownloadModal/></div></></MobileAppFrame>;
