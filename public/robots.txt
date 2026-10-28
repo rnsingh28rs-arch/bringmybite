@@ -6,4 +6,4 @@ Disallow: /chef
 Disallow: /d-admin
 Disallow: /staff
 
-Sitemap: https://bringmybite.com/sitemap.xml
+Sitemap: https://www.bringmybite.com/sitemap.xml
