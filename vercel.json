@@ -4,6 +4,7 @@
   "installCommand": "npm install",
   "framework": "vite",
   "rewrites": [
+    { "source": "/reset-password", "destination": "/index.html" },
     { "source": "/panel-app", "destination": "/index.html" },
     { "source": "/panel-app/:path*", "destination": "/index.html" }
   ]
