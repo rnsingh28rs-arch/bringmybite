@@ -9,7 +9,7 @@ const aliases = new Map([
 ]);
 
 export function normalizeInventoryUnit(unit) {
-  const normalized = String(unit ?? '').trim().toLowerCase().replace(/\\s+/g, ' ');
+  const normalized = String(unit ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
   return aliases.get(normalized) ?? normalized;
 }
 
