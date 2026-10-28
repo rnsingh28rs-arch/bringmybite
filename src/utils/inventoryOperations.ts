@@ -91,7 +91,7 @@ export interface InventoryGrnDetails {
   idempotencyKey:string;
 }
 
-const normalizeIngredientName=(value:string)=>String(value||'').normalize('NFKC').trim().replace(/\\s+/g,' ').toLowerCase();
+const normalizeIngredientName=(value:string)=>String(value||'').normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
 
 export async function recordApprovedInventoryPurchaseWithGrn(
   indent:any,
